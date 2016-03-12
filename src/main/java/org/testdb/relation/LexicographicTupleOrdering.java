@@ -15,8 +15,8 @@ public class LexicographicTupleOrdering implements TupleOrdering {
     @Override
     public int compare(Tuple t1, Tuple t2) {
         Preconditions.checkArgument(
-                t1.getSchema().equals(t2.getSchema()),
-                "Cannot compare tuples with differing schemas.");
+                t1.size() == t2.size(),
+                "Cannot compare tuples of different sizes.");
         
         int sizeCmp = Integer.compare(t1.size(), t2.size());
         if (sizeCmp != 0) {

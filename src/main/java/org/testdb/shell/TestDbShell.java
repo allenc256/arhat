@@ -35,7 +35,7 @@ public class TestDbShell {
                                           String line) {
         try {
             SQLParser parser = parseSql(line);
-            StatementContext statement = parser.statement();
+            StatementContext statement = parser.topLevelStatement().statement();
             StatementEvaluator evaluator = new StatementEvaluator();
             evaluator.evaluate(database, statement);
         } catch (AntlrParseException e) {

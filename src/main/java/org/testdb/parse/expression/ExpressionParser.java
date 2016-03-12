@@ -1,9 +1,16 @@
-package org.testdb.expression;
+package org.testdb.parse.expression;
 
 import java.util.Map;
 import java.util.Map.Entry;
 
 import org.antlr.v4.runtime.Token;
+import org.testdb.expression.BinaryOperator;
+import org.testdb.expression.BinaryOperators;
+import org.testdb.expression.Expression;
+import org.testdb.expression.ImmutableBinaryExpression;
+import org.testdb.expression.ImmutableIdentifierExpression;
+import org.testdb.expression.ImmutableLiteralExpression;
+import org.testdb.expression.ImmutableNotExpression;
 import org.testdb.parse.SQLBaseVisitor;
 import org.testdb.parse.SQLParser;
 import org.testdb.parse.SQLParser.ExpressionAndOrContext;
@@ -24,16 +31,16 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
-public class ExpressionVisitor extends SQLBaseVisitor<Expression> {
+public class ExpressionParser extends SQLBaseVisitor<Expression> {
     private final TupleSchema tupleSchema;
     
-    public ExpressionVisitor(TupleSchema tupleSchema) {
+    public ExpressionParser(TupleSchema tupleSchema) {
         this.tupleSchema = tupleSchema;
     }
 
     @Override
     public Expression visitExpressionLiteral(ExpressionLiteralContext ctx) {
-        LiteralVisitor visitor = new LiteralVisitor();
+        LiteralParser visitor = new LiteralParser();
         ctx.literal().accept(visitor);
         Preconditions.checkState(
                 visitor.getType() != null,

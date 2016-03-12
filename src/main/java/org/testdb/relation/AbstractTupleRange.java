@@ -9,18 +9,6 @@ import com.google.common.base.Preconditions;
 public abstract class AbstractTupleRange implements TupleRange {
     @Check
     protected void check() {
-        if (getLowerBound().isPresent()) {
-            Preconditions.checkState(
-                    getTupleSchema().equals(getLowerBound().get().getSchema()),
-                    "Schema mismatch with lower-bound.");
-        }
-        
-        if (getUpperBound().isPresent()) {
-            Preconditions.checkState(
-                    getTupleSchema().equals(getLowerBound().get().getSchema()),
-                    "Schema mismatch with upper-bound.");
-        }
-        
         if (getLowerBound().isPresent() && getUpperBound().isPresent()) {
             boolean cmp = LexicographicTupleOrdering.INSTANCE.compare(
                     getLowerBound().get(),

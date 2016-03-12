@@ -34,10 +34,7 @@ public abstract class AbstractProjectedRelation implements Relation {
                     values.add(expression.evaluate(source));
                 }
                 
-                return ImmutableTuple.builder()
-                        .schema(getTupleSchema())
-                        .values(values)
-                        .build();
+                return ImmutableTuple.builder().values(values).build();
             }
         };
     }

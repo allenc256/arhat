@@ -1,4 +1,4 @@
-package org.testdb.expression;
+package org.testdb.parse.expression;
 
 import org.testdb.parse.SQLBaseVisitor;
 import org.testdb.parse.SQLParser.LiteralFalseContext;
@@ -11,7 +11,7 @@ import org.testdb.type.SqlType;
 
 import com.google.common.base.Preconditions;
 
-public class LiteralVisitor extends SQLBaseVisitor<Void> {
+public class LiteralParser extends SQLBaseVisitor<Void> {
     private Object value;
     private SqlType type;
     

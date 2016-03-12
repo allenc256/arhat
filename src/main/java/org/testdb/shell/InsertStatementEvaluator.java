@@ -4,9 +4,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.testdb.database.InMemoryDatabase;
-import org.testdb.expression.LiteralVisitor;
 import org.testdb.parse.SQLParser.InsertStatementContext;
 import org.testdb.parse.SQLParser.LiteralContext;
+import org.testdb.parse.expression.LiteralParser;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableQualifiedName;
 import org.testdb.relation.ImmutableTuple;
@@ -52,7 +52,7 @@ public class InsertStatementEvaluator {
     }
 
     private Object parseLiteralValue(LiteralContext value) {
-        LiteralVisitor v = new LiteralVisitor();
+        LiteralParser v = new LiteralParser();
         value.accept(v);
         Preconditions.checkState(
                 v.getType() != null,
@@ -79,9 +79,6 @@ public class InsertStatementEvaluator {
             values.set(cs.getIndex(), value);
         }
         
-        return ImmutableTuple.builder()
-                .schema(relation.getTupleSchema())
-                .values(values)
-                .build();
+        return ImmutableTuple.builder().values(values).build();
     }
 }

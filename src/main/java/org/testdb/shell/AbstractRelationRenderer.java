@@ -101,7 +101,7 @@ public abstract class AbstractRelationRenderer {
     
     private void printTuples(List<Tuple> tuples, List<ColumnFormat> formats) {
         for (Tuple tuple : tuples) {
-            for (int i = 0; i < tuple.getSchema().size(); ++i) {
+            for (int i = 0; i < tuple.size(); ++i) {
                 if (i == 0) {
                     getPrintWriter().print(' ');
                 } else {

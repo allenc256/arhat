@@ -4,6 +4,10 @@ grammar SQL;
 // Parser rules
 // ============
 
+topLevelStatement
+  : statement ';'
+  ;
+
 statement
   : selectStatement
   | insertStatement
@@ -12,11 +16,11 @@ statement
   ;
   
 dropTableStatement
-  : DROP TABLE ID ';'
+  : DROP TABLE ID
   ;
   
 createTableStatement
-  : CREATE TABLE ID '(' columnDefinitionList ')' ';'
+  : CREATE TABLE ID '(' columnDefinitionList ')'
   ;
   
 columnDefinitionList
@@ -28,7 +32,7 @@ columnDefinition
   ;
   
 insertStatement
-  : INSERT INTO ID '(' insertStatementColumns ')' VALUES '(' insertStatementValues ')' ';'
+  : INSERT INTO ID '(' insertStatementColumns ')' VALUES '(' insertStatementValues ')'
   ;
   
 insertStatementColumns
@@ -48,7 +52,7 @@ literal
   ;
   
 selectStatement
-  : SELECT selectStatementColumns selectStatementFromClause selectStatementWhereClause? ';'
+  : SELECT selectStatementColumns selectStatementFromClause selectStatementWhereClause?
   ;
   
 selectStatementColumns
@@ -61,7 +65,12 @@ selectStatementColumn
   ;
 
 selectStatementFromClause
-  : FROM ID
+  : FROM selectStatementFromTableOrSubquery (ID)?
+  ;
+  
+selectStatementFromTableOrSubquery
+  : ID                                  # selectStatementFromTable
+  | '(' selectStatement ')'             # selectStatementFromSubquery
   ;
 
 selectStatementWhereClause
