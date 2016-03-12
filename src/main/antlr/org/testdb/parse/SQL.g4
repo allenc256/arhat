@@ -52,7 +52,7 @@ literal
   ;
   
 selectStatement
-  : SELECT DISTINCT? selectStatementColumns selectStatementFromClause selectStatementWhereClause? selectStatementGroupByClause?
+  : SELECT DISTINCT? selectStatementColumns selectStatementFromClause? selectStatementWhereClause? selectStatementGroupByClause?
   ;
   
 selectStatementColumns
@@ -106,6 +106,7 @@ expression
 
 NEWLINE: '\r'? '\n' -> skip;
 WS: ( ' ' | '\t' | '\n' | '\r' )+ -> skip;
+LINE_COMMENT : '--' (~('\r' | '\n'))* (('\r'? '\n') | EOF) -> skip;
 
 AS: A S;
 AND: A N D;

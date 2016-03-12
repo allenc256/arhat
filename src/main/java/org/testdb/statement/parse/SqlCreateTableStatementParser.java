@@ -1,4 +1,4 @@
-package org.testdb.shell;
+package org.testdb.statement.parse;
 
 import java.util.List;
 
@@ -10,17 +10,16 @@ import org.testdb.parse.SqlParseException;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
 import org.testdb.relation.ImmutableTupleSchema;
-import org.testdb.relation.LexicographicTupleOrdering;
-import org.testdb.relation.SortedMultisetRelation;
 import org.testdb.relation.TupleSchema;
+import org.testdb.statement.ImmutableSqlCreateTableStatement;
+import org.testdb.statement.SqlCreateTableStatement;
 import org.testdb.type.SqlType;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
-import com.google.common.collect.TreeMultiset;
 
-public class CreateTableStatementEvaluator {
-    public void evaluate(InMemoryDatabase database, CreateTableStatementContext ctx) {
+class SqlCreateTableStatementParser {
+    public SqlCreateTableStatement parse(InMemoryDatabase database, CreateTableStatementContext ctx) {
         String tableName = ctx.ID().getText().toLowerCase();
         List<ColumnSchema> tableColumns = getColumnSchemas(tableName, ctx);
         
@@ -35,12 +34,11 @@ public class CreateTableStatementEvaluator {
                 .columnSchemas(tableColumns)
                 .build();
         
-        SortedMultisetRelation table = SortedMultisetRelation.builder()
+        return ImmutableSqlCreateTableStatement.builder()
+                .database(database)
+                .tableName(tableName)
                 .tupleSchema(tupleSchema)
-                .tuplesSortedMultiset(TreeMultiset.create(LexicographicTupleOrdering.INSTANCE))
                 .build();
-        
-        database.getTables().put(tableName, table);
     }
 
     private List<ColumnSchema> getColumnSchemas(String tableName,

@@ -1,13 +1,9 @@
 package org.testdb.shell;
 
-import org.antlr.v4.runtime.ANTLRInputStream;
-import org.antlr.v4.runtime.CommonTokenStream;
 import org.testdb.database.InMemoryDatabase;
 import org.testdb.parse.SqlParseException;
-import org.testdb.parse.SqlParseExceptionErrorListener;
-import org.testdb.parse.SQLLexer;
-import org.testdb.parse.SQLParser;
-import org.testdb.parse.SQLParser.StatementContext;
+import org.testdb.statement.SqlStatement;
+import org.testdb.statement.parse.SqlStatementParser;
 
 import jline.console.ConsoleReader;
 
@@ -38,10 +34,9 @@ public class TestDbShell {
     private static void evaluateStatement(InMemoryDatabase database,
                                           String line) {
         try {
-            SQLParser parser = parseSql(line);
-            StatementContext statement = parser.topLevelStatement().statement();
-            StatementEvaluator evaluator = new StatementEvaluator();
-            evaluator.evaluate(database, statement);
+            SqlStatementParser parser = new SqlStatementParser();
+            SqlStatement statement = parser.parse(database, line);
+            statement.accept(new TestDbShellSqlStatementEvaluator());
         } catch (SqlParseException e) {
             System.err.println(e.getMessage());
             System.err.flush();
@@ -50,17 +45,5 @@ public class TestDbShell {
             System.err.println();
             System.err.flush();
         }
-    }
-
-    private static SQLParser parseSql(String line) {
-        ANTLRInputStream input = new ANTLRInputStream(line);
-        SQLLexer lexer = new SQLLexer(input);
-        CommonTokenStream tokens = new CommonTokenStream(lexer);
-        SQLParser parser = new SQLParser(tokens);
-        
-        parser.removeErrorListeners();
-        parser.addErrorListener(new SqlParseExceptionErrorListener());
-        
-        return parser;
     }
 }

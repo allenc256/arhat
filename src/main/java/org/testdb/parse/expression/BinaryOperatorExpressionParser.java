@@ -64,7 +64,7 @@ class BinaryOperatorExpressionParser {
         
         if (!left.getType().equals(SqlType.NULL)
                 && !right.getType().equals(SqlType.NULL)
-                && !left.getType().equals(right)) {
+                && !left.getType().equals(right.getType())) {
             throw SqlParseException.create(
                     opToken,
                     "cannot apply '%s' operator to expressions with types %s and %s.",

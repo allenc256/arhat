@@ -1,4 +1,4 @@
-package org.testdb.shell;
+package org.testdb.statement.parse;
 
 import java.util.Collection;
 import java.util.List;
@@ -16,6 +16,8 @@ import org.testdb.relation.ImmutableTuple;
 import org.testdb.relation.SortedMultisetRelation;
 import org.testdb.relation.Tuple;
 import org.testdb.relation.TupleSchema;
+import org.testdb.statement.ImmutableSqlInsertStatement;
+import org.testdb.statement.SqlInsertStatement;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -23,8 +25,9 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
-public class InsertStatementEvaluator {
-    public void evaluate(InMemoryDatabase database, InsertStatementContext ctx) {
+class SqlInsertStatementParser {
+    public SqlInsertStatement parse(InMemoryDatabase database,
+                                    InsertStatementContext ctx) {
         // Parse relation.
         String tableName = ctx.ID().getText().toLowerCase();
         SortedMultisetRelation relation = database.getTables().get(tableName);
@@ -42,10 +45,16 @@ public class InsertStatementEvaluator {
                 ctx, 
                 columnSchemas);
         
-        relation.getTuplesSortedMultiset().add(constructTuple(
+        
+        Tuple tuple = constructTuple(
                 relation,
                 columnSchemas,
-                columnValues));
+                columnValues);
+        return ImmutableSqlInsertStatement.builder()
+                .database(database)
+                .tableName(tableName)
+                .tuple(tuple)
+                .build();
     }
 
     private List<Object> parseColumnValues(InsertStatementContext ctx,
@@ -57,7 +66,7 @@ public class InsertStatementEvaluator {
             if (i >= columnSchemas.size()) {
                 throw SqlParseException.create(
                         ls.get(i).getStart(),
-                        "more target expressions than columns specified.");
+                        "more expressions than target columns specified.");
             }
             
             Object value = parseLiteralValue(ls.get(i));

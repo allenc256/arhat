@@ -34,4 +34,19 @@ public interface TupleSchema {
     default int size() {
         return getColumnSchemas().size();
     }
+    
+    default boolean matchesType(Tuple tuple) {
+        if (getColumnSchemas().size() != tuple.size()) {
+            return false;
+        }
+        
+        for (int i = 0; i < tuple.size(); ++i) {
+            Object value = tuple.get(i);
+            if (value != null && !getColumnSchema(i).getType().getJavaType().equals(value.getClass())) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
 }

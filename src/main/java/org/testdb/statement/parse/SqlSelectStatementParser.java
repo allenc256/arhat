@@ -1,4 +1,4 @@
-package org.testdb.parse.statement;
+package org.testdb.statement.parse;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,6 +23,7 @@ import org.testdb.parse.expression.ExpressionParser;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
 import org.testdb.relation.ImmutableDistinctRelation;
+import org.testdb.relation.ImmutableDualRelation;
 import org.testdb.relation.ImmutableFilteredRelation;
 import org.testdb.relation.ImmutableGroupByRelation;
 import org.testdb.relation.ImmutableNamedRelation;
@@ -31,6 +32,8 @@ import org.testdb.relation.ImmutableProjectedRelation;
 import org.testdb.relation.ImmutableTupleSchema;
 import org.testdb.relation.Relation;
 import org.testdb.relation.TupleSchema;
+import org.testdb.statement.ImmutableSqlSelectStatement;
+import org.testdb.statement.SqlSelectStatement;
 import org.testdb.type.SqlType;
 
 import com.google.common.base.Optional;
@@ -39,20 +42,32 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
-public class SelectStatementParser {
-    public Relation parse(InMemoryDatabase database, SelectStatementContext ctx) {
-        Relation relation = ctx.selectStatementFromClause()
-                .selectStatementFromTableOrSubquery()
-                .stream()
-                .map(s -> s.accept(new FromClauseVisitor(database)))
-                .reduce((r1, r2) -> joinRelations(r1, r2))
-                .get();
+class SqlSelectStatementParser {
+    public SqlSelectStatement parse(InMemoryDatabase database, SelectStatementContext ctx) {
+        Relation relation = parseFromClause(database, ctx);
         
         relation = filterIfNecessary(ctx, relation);
         relation = projectOrGroupByIfNecessary(ctx, relation);
         relation = distinctIfNecessary(ctx, relation);
         
-        return relation;
+        return ImmutableSqlSelectStatement.builder()
+                .database(database)
+                .relation(relation)
+                .build();
+    }
+
+    private Relation parseFromClause(InMemoryDatabase database,
+                                     SelectStatementContext ctx) {
+        if (ctx.selectStatementFromClause() == null) {
+            return ImmutableDualRelation.of();
+        }
+        
+        return ctx.selectStatementFromClause()
+                .selectStatementFromTableOrSubquery()
+                .stream()
+                .map(s -> s.accept(new FromClauseVisitor(database)))
+                .reduce((r1, r2) -> joinRelations(r1, r2))
+                .get();
     }
     
     private Relation joinRelations(Relation r1, Relation r2) {
@@ -318,8 +333,8 @@ public class SelectStatementParser {
 
         @Override
         public Relation visitSelectStatementFromSubquery(SelectStatementFromSubqueryContext ctx) {
-            SelectStatementParser parser = new SelectStatementParser();
-            Relation relation = parser.parse(database, ctx.selectStatement());
+            SqlSelectStatementParser parser = new SqlSelectStatementParser();
+            Relation relation = parser.parse(database, ctx.selectStatement()).getRelation();
             
             if (ctx.ID() != null) {
                 relation = ImmutableNamedRelation.builder()

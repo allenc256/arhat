@@ -1,0 +1,110 @@
+---
+
+# ============================
+# CREATE TABLE statement tests
+# ============================
+
+- statement: CREATE TABLE foobar (foo INTEGER)
+
+- statement: CREATE TABLE foobar (foo INTEGER)
+  error: relation 'foobar' already exists.
+
+- statement: RESET
+- statement: Create Table Foobar (Foo Integer) 
+
+- statement: RESET
+- statement: create table foobar (foo integer)
+  
+# ======================
+# INSERT statement tests
+# ======================
+
+- statement: RESET
+
+- statement: CREATE TABLE foobar (foo INTEGER, bar STRING, baz BOOLEAN)
+
+- statement: INSERT INTO foobar (foo, bar, baz) VALUES (1)
+  error: more target columns than expressions
+
+- statement: INSERT INTO foobar (foo, bar) VALUES (null, null, null)
+  error: more expressions than target columns
+
+- statement: INSERT INTO foobaz (foo, bar) VALUES (null, null)
+  error: relation 'foobaz' does not exist
+
+- statement: INSERT INTO foobar (foo) VALUES ('foo')
+  error: expected literal of type INTEGER
+
+- statement: INSERT INTO foobar (quux) VALUES (null)
+  error: column 'quux' does not exist
+
+- statement: INSERT INTO foobar (foo) VALUES (1)
+- statement: SELECT * FROM foobar
+  tuples:
+  - [1, null, null]
+
+- statement: INSERT INTO foobar (foo, bar, baz) VALUES (2, 'blah', null)
+- statement: SELECT * FROM foobar
+  tuples:
+  - [1, null, null]
+  - [2, 'blah', null]
+
+# ======================
+# SELECT statement tests
+# ======================
+
+- statement: RESET
+
+# ----------------
+# Expression tests
+# ----------------
+
+- statement: SELECT 1
+  tuples:
+  - [1]
+
+- statement: SELECT 1 + 1
+  tuples:
+  - [2]
+
+- statement: SELECT 1 + 2*3
+  tuples:
+  - [7]
+  
+- statement: SELECT (1+2)*3
+  tuples:
+  - [9]
+
+- statement: SELECT 1 + 'foo'
+  error: cannot apply '\+' operator to expressions with types INTEGER and STRING
+
+- statement: SELECT -1
+  tuples:
+  - [-1]
+  
+- statement: SELECT - 'foo'
+  error: do not know how to parse operator '-' against input type STRING
+
+- statement: SELECT null + 1
+  tuples:
+  - [null]
+  
+- statement: SELECT -null
+  error: do not know how to parse operator '-' against input type NULL
+
+- statement: SELECT foo
+  error: column 'foo' does not exist
+  
+- statement: SELECT 1 < 2 AND 2 < 3
+  tuples:
+  - [true]
+
+- statement: SELECT NOT 1 > 2 AND 2 > 3 -- check precedence of NOT operator
+  tuples:
+  - [false]
+  
+- statement: SELECT NOT (1 > 2 AND 2 > 3) -- check precedence of NOT operator
+  tuples:
+  - [true]
+
+- statement: CREATE TABLE foobar (foo integer, bar string, baz boolean)

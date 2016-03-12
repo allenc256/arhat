@@ -1,11 +1,14 @@
-package org.testdb.shell;
+package org.testdb.statement.parse;
 
 import org.testdb.database.InMemoryDatabase;
 import org.testdb.parse.SQLParser.DropTableStatementContext;
 import org.testdb.parse.SqlParseException;
+import org.testdb.statement.ImmutableSqlDropTableStatement;
+import org.testdb.statement.SqlDropTableStatement;
 
-public class DropTableStatementEvaluator {
-    public void evaluate(InMemoryDatabase database, DropTableStatementContext ctx) {
+class SqlDropTableStatementParser {
+    public SqlDropTableStatement parse(InMemoryDatabase database,
+                                       DropTableStatementContext ctx) {
         String tableName = ctx.ID().getText().toLowerCase();
         
         if (!database.getTables().containsKey(tableName)) {
@@ -15,6 +18,9 @@ public class DropTableStatementEvaluator {
                     tableName);
         }
         
-        database.getTables().remove(tableName);
+        return ImmutableSqlDropTableStatement.builder()
+                .database(database)
+                .tableName(tableName)
+                .build();
     }
 }

@@ -12,4 +12,8 @@ public class InMemoryDatabase {
     public Map<String, SortedMultisetRelation> getTables() {
         return tables;
     }
+    
+    public void reset() {
+        tables.clear();
+    }
 }

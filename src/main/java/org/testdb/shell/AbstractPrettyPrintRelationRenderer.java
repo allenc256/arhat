@@ -17,8 +17,7 @@ import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 
 @Value.Immutable
-@Value.Style(typeImmutable = "*")
-public abstract class AbstractRelationRenderer {
+public abstract class AbstractPrettyPrintRelationRenderer {
     public abstract Relation getRelation();
     
     @Value.Default
