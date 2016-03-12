@@ -15,10 +15,14 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 @Value.Immutable
-public abstract class AbstractGroupByRelation extends AbstractProjectionOrGroupByRelation {
+public abstract class AbstractGroupByRelation implements Relation {
+    public abstract List<Expression> getTargetExpressions();
+    
     public abstract List<Expression> getGroupByExpressions();
     
     public abstract List<Aggregator<?, ?>> getAggregators();
+    
+    public abstract Relation getSourceRelation();
     
     @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
@@ -90,5 +94,10 @@ public abstract class AbstractGroupByRelation extends AbstractProjectionOrGroupB
         public Object get(int index) {
             return tuple.get(index);
         }
+    }
+    
+    @Value.Check
+    protected void check() {
+        Expressions.checkSchema(getTupleSchema(), getTargetExpressions());
     }
 }
