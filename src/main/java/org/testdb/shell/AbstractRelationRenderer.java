@@ -10,8 +10,6 @@ import org.testdb.relation.Relation;
 import org.testdb.relation.Tuple;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 
 @Value.Immutable
@@ -35,25 +33,40 @@ public abstract class AbstractRelationRenderer {
     }
     
     public void render() {
+        List<Tuple> tuples = Lists.newArrayList();
+        boolean reachedLimit = true;
+        
         try (Cursor<Tuple> c = getRelation().getTuples()) {
-            List<Tuple> tuples = ImmutableList.copyOf(Iterators.limit(c, getLimit()));
-            List<Integer> widths = computeColumnWidths(tuples);
-            
-            // Print header row.
-            printValues(widths, Lists.transform(
-                    getRelation().getTupleSchema().getColumnSchemas(), 
-                    cs -> cs.getName()));
-            printSeparator(widths);
-            
-            // Print tuples.
-            for (int i = 0; i < tuples.size(); ++i) {
-                printValues(widths, Lists.transform(tuples.get(i).getValues(), v -> formatValue(v)));
+            for (int i = 0; i < getLimit(); ++i) {
+                if (!c.hasNext()) {
+                    reachedLimit = false;
+                    break;
+                }
+                tuples.add(c.next());
             }
-            
-            getPrintWriter().println();
         } catch (Exception e) {
             throw Throwables.propagate(e);
         }
+            
+        List<Integer> widths = computeColumnWidths(tuples);
+        
+        // Print header row.
+        printValues(widths, Lists.transform(
+                getRelation().getTupleSchema().getColumnSchemas(), 
+                cs -> cs.getName()));
+        printSeparator(widths);
+        
+        // Print tuples.
+        for (int i = 0; i < tuples.size(); ++i) {
+            printValues(widths, Lists.transform(tuples.get(i).getValues(), v -> formatValue(v)));
+        }
+
+        getPrintWriter().printf(
+                "(%s%d row%s)\n",
+                reachedLimit ? "first " : "",
+                tuples.size(),
+                tuples.size() != 1 ? "s" : "");
+        getPrintWriter().println();
     }
 
     private void printValues(List<Integer> widths, List<String> values) {

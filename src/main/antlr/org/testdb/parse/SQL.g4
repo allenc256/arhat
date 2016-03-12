@@ -12,11 +12,11 @@ statement
   ;
   
 dropTableStatement
-  : DROP TABLE ID
+  : DROP TABLE ID ';'
   ;
   
 createTableStatement
-  : CREATE TABLE ID '(' columnDefinitionList ')'
+  : CREATE TABLE ID '(' columnDefinitionList ')' ';'
   ;
   
 columnDefinitionList
@@ -28,7 +28,7 @@ columnDefinition
   ;
   
 insertStatement
-  : INSERT INTO ID '(' insertStatementColumns ')' VALUES '(' insertStatementValue (',' insertStatementValue)* ')'
+  : INSERT INTO ID '(' insertStatementColumns ')' VALUES '(' insertStatementValue (',' insertStatementValue)* ')' ';'
   ;
   
 insertStatementColumns
@@ -42,7 +42,7 @@ insertStatementValue
   ;
   
 selectStatement
-  : SELECT selectStatementColumns selectStatementFromClause
+  : SELECT selectStatementColumns selectStatementFromClause ';'
   ;
   
 selectStatementColumns

@@ -16,6 +16,10 @@ public class TestDbShell {
         ConsoleReader reader = new ConsoleReader();
         InMemoryDatabase database = new InMemoryDatabase();
         
+        evaluateStatement(database, "create table foobar (foo integer, bar string);");
+        evaluateStatement(database, "insert into foobar (foo, bar) values (1, 'hello');");
+        evaluateStatement(database, "insert into foobar (foo, bar) values (2, 'world');");
+        
         reader.setPrompt("testdb# ");
         
         String line;
@@ -23,19 +27,23 @@ public class TestDbShell {
             if (line.trim().equals("")) {
                 continue;
             }
+            evaluateStatement(database, line);
+        }
+    }
 
-            try {
-                SQLParser parser = parseSql(line);
-                StatementContext statement = parser.statement();
-                StatementEvaluator evaluator = new StatementEvaluator();
-                evaluator.evaluate(database, statement);
-            } catch (AntlrParseException e) {
-                System.err.println(e.getMessage());
-                System.err.flush();
-            } catch (Exception e) {
-                e.printStackTrace(System.err);
-                System.err.flush();
-            }
+    private static void evaluateStatement(InMemoryDatabase database,
+                                         String line) {
+        try {
+            SQLParser parser = parseSql(line);
+            StatementContext statement = parser.statement();
+            StatementEvaluator evaluator = new StatementEvaluator();
+            evaluator.evaluate(database, statement);
+        } catch (AntlrParseException e) {
+            System.err.println(e.getMessage());
+            System.err.flush();
+        } catch (Exception e) {
+            e.printStackTrace(System.err);
+            System.err.flush();
         }
     }
 
