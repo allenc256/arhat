@@ -1,7 +1,6 @@
 package org.testdb.expression;
 
 import org.immutables.value.Value;
-import org.testdb.relation.Tuple;
 import org.testdb.type.SqlType;
 
 import com.google.common.base.Preconditions;
@@ -16,10 +15,10 @@ public abstract class AbstractBinaryExpression implements Expression {
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
     @Override
-    public Object evaluate(Tuple tuple) {
+    public Object evaluate(Environment env) {
         return ((BinaryOperator)getOperator()).apply(
-                getLeftExpression().evaluate(tuple),
-                getRightExpression().evaluate(tuple));
+                getLeftExpression().evaluate(env),
+                getRightExpression().evaluate(env));
     }
 
     @Value.Check

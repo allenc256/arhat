@@ -2,24 +2,29 @@ package org.testdb.parse.statement;
 
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.testdb.database.InMemoryDatabase;
-import org.testdb.expression.AbstractIdentifierExpression;
+import org.testdb.expression.AbstractVariableExpression;
 import org.testdb.expression.Expression;
-import org.testdb.expression.ImmutableExtractIndexExpression;
+import org.testdb.expression.ImmutableVariableExpression;
+import org.testdb.expression.aggregator.Aggregator;
 import org.testdb.parse.SQLBaseVisitor;
 import org.testdb.parse.SQLParser;
+import org.testdb.parse.SQLParser.ExpressionContext;
 import org.testdb.parse.SQLParser.SelectStatementColumnContext;
 import org.testdb.parse.SQLParser.SelectStatementColumnExpressionContext;
 import org.testdb.parse.SQLParser.SelectStatementColumnStarContext;
 import org.testdb.parse.SQLParser.SelectStatementContext;
 import org.testdb.parse.SQLParser.SelectStatementFromSubqueryContext;
 import org.testdb.parse.SQLParser.SelectStatementFromTableContext;
+import org.testdb.parse.expression.ExpressionHasAggregationParser;
 import org.testdb.parse.expression.ExpressionParser;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
 import org.testdb.relation.ImmutableDistinctRelation;
 import org.testdb.relation.ImmutableFilteredRelation;
+import org.testdb.relation.ImmutableGroupByRelation;
 import org.testdb.relation.ImmutableNamedRelation;
 import org.testdb.relation.ImmutableNestedLoopJoinRelation;
 import org.testdb.relation.ImmutableProjectedRelation;
@@ -31,6 +36,7 @@ import org.testdb.type.SqlType;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
@@ -42,9 +48,11 @@ public class SelectStatementParser {
                 .map(s -> s.accept(new FromClauseVisitor(database)))
                 .reduce((r1, r2) -> joinRelations(r1, r2))
                 .get();
-        relation = applyFilterIfNecessary(ctx, relation);
-        relation = applyProjectionIfNecessary(ctx, relation);
-        relation = applyDistinctIfNecessary(ctx, relation);
+        
+        relation = filterIfNecessary(ctx, relation);
+        relation = projectOrGroupByIfNecessary(ctx, relation);
+        relation = distinctIfNecessary(ctx, relation);
+        
         return relation;
     }
     
@@ -62,8 +70,8 @@ public class SelectStatementParser {
         return t -> (Boolean)expression.evaluate(t);
     }
     
-    private Relation applyFilterIfNecessary(SelectStatementContext ctx,
-                                            Relation relation) {
+    private Relation filterIfNecessary(SelectStatementContext ctx,
+                                               Relation relation) {
         if (ctx.selectStatementWhereClause() == null) {
             return relation;
         }
@@ -76,29 +84,99 @@ public class SelectStatementParser {
                 .filterPredicate(toPredicate(expression))
                 .build();
     }
-
-    private Relation applyProjectionIfNecessary(SelectStatementContext ctx,
-                                                Relation relation) {
+    
+    private Relation projectOrGroupByIfNecessary(SelectStatementContext ctx,
+                                                 Relation relation) {
         List<SelectStatementColumnContext> columns = ctx.selectStatementColumns().selectStatementColumn();
+        boolean hasAggregations = ctx.selectStatementColumns().accept(new ExpressionHasAggregationParser());
         
-        // N.B., a query of the form "SELECT * FROM foo" does not need a projection.
+        if (ctx.selectStatementGroupByClause() != null || hasAggregations) {
+            return groupByRelation(ctx, relation);
+        }
+        
         if (columns.size() == 1 && columns.get(0).start.getType() == SQLParser.STAR_SYMBOL) {
+            // N.B., a query of the form "SELECT * FROM foo" does not need a projection.
             return relation;
         }
         
+        return projectRelation(ctx, relation);
+    }
+    
+    private Relation groupByRelation(SelectStatementContext ctx,
+                                     Relation relation) {
+        List<Expression> groupByExpressions;
+        
+        if (ctx.selectStatementGroupByClause() != null) {
+            groupByExpressions = ctx.selectStatementGroupByClause()
+                    .expression()
+                    .stream()
+                    .map(e -> parseGroupByExpression(relation.getTupleSchema(), e))
+                    .collect(Collectors.toList());
+        } else {
+            // N.B., if there's no GROUP BY clause, we're aggregating over
+            // everything (e.g., "SELECT COUNT(*) FROM foo"). This is
+            // easily implemented as grouping by the empty tuple "()".
+            groupByExpressions = ImmutableList.of();
+        }
+        
+        TupleSchema groupBySchema = toTupleSchema(groupByExpressions);
+        
         ColumnsVisitor visitor = new ColumnsVisitor(
-                relation.getTupleSchema());
+                groupBySchema,
+                Optional.of(relation.getTupleSchema()));
+        ctx.selectStatementColumns().accept(visitor);
+        
+        return ImmutableGroupByRelation.builder()
+                .targetExpressions(visitor.getExpressions())
+                .groupByExpressions(groupByExpressions)
+                .sourceRelation(relation)
+                .tupleSchema(visitor.getTargetTupleSchema())
+                .aggregators(visitor.getAggregators())
+                .build();
+    }
+    
+    private Expression parseGroupByExpression(TupleSchema tupleSchema,
+                                              ExpressionContext ctx) {
+        return ctx.accept(new ExpressionParser(tupleSchema));
+    }
+    
+    private TupleSchema toTupleSchema(List<Expression> expressions) {
+        ImmutableTupleSchema.Builder b = ImmutableTupleSchema.builder();
+        
+        for (int i=0; i<expressions.size(); ++i) {
+            Optional<String> columnName = Optional.absent();
+            Expression expression = expressions.get(i);
+            
+            if (expression instanceof AbstractVariableExpression) {
+                columnName = ((AbstractVariableExpression)expression).getName();
+            }
+            
+            b.addColumnSchemas(ImmutableColumnSchema.builder()
+                    .index(i)
+                    .name(columnName)
+                    .type(expression.getType())
+                    .build());
+        }
+        
+        return b.build();
+    }
+        
+    private Relation projectRelation(SelectStatementContext ctx,
+                                     Relation relation) {
+        ColumnsVisitor visitor = new ColumnsVisitor(
+                relation.getTupleSchema(),
+                Optional.absent());
         ctx.selectStatementColumns().accept(visitor);
         
         return ImmutableProjectedRelation.builder()
-                .expressions(visitor.getExpressions())
+                .targetExpressions(visitor.getExpressions())
                 .sourceRelation(relation)
                 .tupleSchema(visitor.getTargetTupleSchema())
                 .build();
     }
     
-    private Relation applyDistinctIfNecessary(SelectStatementContext ctx,
-                                              Relation relation) {
+    private Relation distinctIfNecessary(SelectStatementContext ctx,
+                                         Relation relation) {
         if (ctx.DISTINCT() != null) {
             return ImmutableDistinctRelation.builder().sourceRelation(relation).build();
         } else {
@@ -108,11 +186,23 @@ public class SelectStatementParser {
     
     private static class ColumnsVisitor extends SQLBaseVisitor<Void> {
         private final List<Expression> expressions = Lists.newArrayList();
+        private final List<Aggregator<?, ?>> aggregators = Lists.newArrayList();
         private final List<Optional<String>> columnNames = Lists.newArrayList();
         private final TupleSchema sourceTupleSchema;
+        private final Optional<TupleSchema> sourcePartitionTupleSchema;
 
-        private ColumnsVisitor(TupleSchema sourceTupleSchema) {
+        private ColumnsVisitor(TupleSchema sourceTupleSchema,
+                               Optional<TupleSchema> sourcePartitionTupleSchema) {
             this.sourceTupleSchema = sourceTupleSchema;
+            this.sourcePartitionTupleSchema = sourcePartitionTupleSchema;
+        }
+        
+        public List<Expression> getExpressions() {
+            return expressions;
+        }
+        
+        public List<Aggregator<?, ?>> getAggregators() {
+            return aggregators;
         }
 
         @Override
@@ -140,8 +230,8 @@ public class SelectStatementParser {
                     continue;
                 }
                 
-                expressions.add(ImmutableExtractIndexExpression.builder()
-                        .tupleIndex(i)
+                expressions.add(ImmutableVariableExpression.builder()
+                        .variableIndex(i)
                         .type(sourceTupleSchema.getColumnSchema(i).getType())
                         .build());
                 columnNames.add(cs.getName());
@@ -152,26 +242,25 @@ public class SelectStatementParser {
 
         @Override
         public Void visitSelectStatementColumnExpression(SelectStatementColumnExpressionContext ctx) {
-            ExpressionParser visitor = new ExpressionParser(sourceTupleSchema);
+            ExpressionParser visitor = new ExpressionParser(
+                    sourceTupleSchema,
+                    sourcePartitionTupleSchema,
+                    aggregators);
             Expression expression = ctx.expression().accept(visitor);
             
             expressions.add(expression);
             
             if (ctx.ID() != null) {
                 columnNames.add(Optional.of(ctx.ID().getText()));
-            } else if (expression instanceof AbstractIdentifierExpression) {
-                columnNames.add(Optional.of(((AbstractIdentifierExpression)expression).getColumnName().getName()));
+            } else if (expression instanceof AbstractVariableExpression) {
+                columnNames.add(((AbstractVariableExpression)expression).getName());
             } else {
                 columnNames.add(Optional.absent());
             }
             
             return null;
         }
-        
-        public List<Expression> getExpressions() {
-            return expressions;
-        }
-        
+
         public TupleSchema getTargetTupleSchema() {
             Preconditions.checkState(
                     expressions.size() == columnNames.size(),

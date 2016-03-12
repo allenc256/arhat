@@ -52,7 +52,7 @@ literal
   ;
   
 selectStatement
-  : SELECT DISTINCT? selectStatementColumns selectStatementFromClause selectStatementWhereClause?
+  : SELECT DISTINCT? selectStatementColumns selectStatementFromClause selectStatementWhereClause? selectStatementGroupByClause?
   ;
   
 selectStatementColumns
@@ -77,11 +77,18 @@ selectStatementWhereClause
   : WHERE expression
   ;
 
+selectStatementGroupByClause
+  : GROUP BY expression (',' expression)*
+  ;
+
 // N.B., order below is important for associativity rules.
 expression
   : (ID '.')? ID                        # expressionId
   | literal                             # expressionLiteral
   | '(' expression ')'                  # expressionParens
+  | fn=(AVG|COUNT|MIN|MAX|SUM) '(' expression ')'     # expressionAggregate
+  | COUNT '(' DISTINCT expression ')'   # expressionCountDistinct
+  | COUNT '(' STAR_SYMBOL ')'           # expressionCountStar
   | MINUS_SYMBOL expression             # expressionNegate
   | expression CONCAT_SYMBOL expression # expressionConcat
   | expression op=('*'|'/') expression  # expressionMultDiv
@@ -102,11 +109,15 @@ WS: ( ' ' | '\t' | '\n' | '\r' )+ -> skip;
 
 AS: A S;
 AND: A N D;
+AVG: A V G;
 BOOLEAN: B O O L E A N;
+BY: B Y;
+COUNT: C O U N T;
 CREATE: C R E A T E;
 DISTINCT: D I S T I N C T;
 DROP: D R O P;
 FROM: F R O M;
+GROUP: G R O U P;
 INSERT: I N S E R T;
 INTEGER: I N T E G E R;
 INTO: I N T O;
@@ -114,6 +125,9 @@ IS: I S;
 TABLE: T A B L E;
 SELECT: S E L E C T;
 STRING: S T R I N G;
+SUM: S U M;
+MAX: M A X;
+MIN: M I N;
 NOT: N O T;
 OR: O R;
 WHERE: W H E R E;
