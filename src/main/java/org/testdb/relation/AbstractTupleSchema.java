@@ -3,20 +3,9 @@ package org.testdb.relation;
 import org.immutables.value.Value;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.Multimap;
 
 @Value.Immutable
 public abstract class AbstractTupleSchema implements TupleSchema {
-    @Value.Derived
-    public Multimap<String, ColumnSchema> getColumnSchemasByName() {
-        ImmutableListMultimap.Builder<String, ColumnSchema> b = ImmutableListMultimap.builder();
-        for (ColumnSchema cs : getColumnSchemas()) {
-            b.put(cs.getName(), cs);
-        }
-        return b.build();
-    }
-    
     @Value.Check
     protected void check() {
         // Check indexes on column schemas.
@@ -25,9 +14,12 @@ public abstract class AbstractTupleSchema implements TupleSchema {
             Preconditions.checkState(
                     cs.getIndex() == i,
                     "Column '%s' has incorrect index (was %d but expected %d).",
-                    cs.getName(),
+                    cs.getQualifiedName(),
                     cs.getIndex(),
                     i);
         }
+        
+        // N.B., column names are *not* guaranteed to be unique. For example,
+        // "SELECT foo, foo FROM foobar" is a valid SQL query.
     }
 }

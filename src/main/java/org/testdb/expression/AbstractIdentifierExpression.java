@@ -1,27 +1,36 @@
 package org.testdb.expression;
 
+import java.util.Collection;
+
 import org.immutables.value.Value;
 import org.testdb.relation.ColumnSchema;
+import org.testdb.relation.QualifiedName;
 import org.testdb.relation.Tuple;
 import org.testdb.relation.TupleSchema;
 import org.testdb.type.SqlType;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterables;
 
 @Value.Immutable
 public abstract class AbstractIdentifierExpression implements Expression {
     public abstract TupleSchema getTupleSchema();
     
-    public abstract String getColumnName();
+    public abstract QualifiedName getColumnName();
     
     @Value.Derived
     public int getColumnIndex() {
-        Iterable<ColumnSchema> css = getTupleSchema().getColumnSchemas(getColumnName());
-        if (Iterables.size(css) != 1) {
-            throw new IllegalStateException(String.format(
-                    "Column name '%s' is ambiguous.",
-                    getColumnName()));
-        }
+        Collection<ColumnSchema> css = getTupleSchema().getColumnSchemas(getColumnName());
+        
+        Preconditions.checkState(
+                !css.isEmpty(),
+                "Column '%s' does not exist.",
+                getColumnName());
+        Preconditions.checkState(
+                css.size() <= 1,
+                "Column name '%s' is ambiguous.",
+                getColumnName());
+
         return Iterables.getOnlyElement(css).getIndex();
     }
     

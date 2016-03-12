@@ -91,7 +91,7 @@ public abstract class AbstractRelationRenderer {
                 getPrintWriter().print(" | ");
             }
             getPrintWriter().print(formatValuePadded(
-                    css.get(i).getName(),
+                    css.get(i).getQualifiedName().getName(),
                     getHeaderJustification(),
                     formats.get(i).width));
         }
@@ -143,7 +143,7 @@ public abstract class AbstractRelationRenderer {
             if (Number.class.isAssignableFrom(cs.getType().getJavaType())) {
                 justification = getNumericJustification();
             }
-            formats.add(new ColumnFormat(cs.getName().length(), justification));
+            formats.add(new ColumnFormat(cs.getQualifiedName().getName().length(), justification));
         }
         
         for (Tuple t : tuples) {

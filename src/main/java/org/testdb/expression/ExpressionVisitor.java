@@ -15,6 +15,8 @@ import org.testdb.parse.SQLParser.ExpressionMultDivContext;
 import org.testdb.parse.SQLParser.ExpressionNotContext;
 import org.testdb.parse.SQLParser.ExpressionParensContext;
 import org.testdb.parse.SQLParser.ExpressionPlusMinusContext;
+import org.testdb.relation.ImmutableQualifiedName;
+import org.testdb.relation.QualifiedName;
 import org.testdb.relation.TupleSchema;
 import org.testdb.type.SqlType;
 
@@ -44,9 +46,18 @@ public class ExpressionVisitor extends SQLBaseVisitor<Expression> {
 
     @Override
     public Expression visitExpressionId(ExpressionIdContext ctx) {
+        QualifiedName columnName;
+        if (ctx.ID().size() == 1) {
+            columnName = ImmutableQualifiedName.of(ctx.ID(0).getText());
+        } else if (ctx.ID().size() == 2) {
+            columnName = ImmutableQualifiedName.of(ctx.ID(0).getText(), ctx.ID(1).getText());
+        } else {
+            throw new IllegalStateException("Failed to parse identifier expression "
+                    + "(unexpected number of identifiers).");
+        }
         return ImmutableIdentifierExpression.builder()
                 .tupleSchema(tupleSchema)
-                .columnName(ctx.ID().getText())
+                .columnName(columnName)
                 .build();
     }
     

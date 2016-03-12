@@ -17,7 +17,9 @@ import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
 import org.testdb.relation.ImmutableFilteredRelation;
 import org.testdb.relation.ImmutableProjectedRelation;
+import org.testdb.relation.ImmutableQualifiedName;
 import org.testdb.relation.ImmutableTupleSchema;
+import org.testdb.relation.QualifiedName;
 import org.testdb.relation.Relation;
 import org.testdb.relation.Tuple;
 import org.testdb.relation.TupleSchema;
@@ -92,7 +94,7 @@ public class SelectStatementEvaluator {
     
     private static class SelectStatementColumnsVisitor extends SQLBaseVisitor<Void> {
         private final List<Expression> expressions = Lists.newArrayList();
-        private final List<String> columnNames = Lists.newArrayList();
+        private final List<QualifiedName> columnNames = Lists.newArrayList();
         private final TupleSchema sourceTupleSchema;
 
         private SelectStatementColumnsVisitor(TupleSchema sourceTupleSchema) {
@@ -104,9 +106,9 @@ public class SelectStatementEvaluator {
             for (ColumnSchema cs : sourceTupleSchema.getColumnSchemas()) {
                 expressions.add(ImmutableIdentifierExpression.builder()
                         .tupleSchema(sourceTupleSchema)
-                        .columnName(cs.getName())
+                        .columnName(cs.getQualifiedName())
                         .build());
-                columnNames.add(cs.getName());
+                columnNames.add(cs.getQualifiedName());
             }
             
             return null;
@@ -118,10 +120,13 @@ public class SelectStatementEvaluator {
             Expression expression = ctx.expression().accept(visitor);
             
             expressions.add(expression);
-            if (expression instanceof AbstractIdentifierExpression) {
+            
+            if (ctx.ID() != null) {
+                columnNames.add(ImmutableQualifiedName.of(ctx.ID().getText()));
+            } else if (expression instanceof AbstractIdentifierExpression) {
                 columnNames.add(((AbstractIdentifierExpression)expression).getColumnName());
             } else {
-                columnNames.add("?column?");
+                columnNames.add(ImmutableQualifiedName.of("?column?"));
             }
             
             return null;
@@ -141,7 +146,7 @@ public class SelectStatementEvaluator {
             for (int i = 0; i < expressions.size(); ++i) {
                 columns.add(ImmutableColumnSchema.builder()
                         .index(i)
-                        .name(columnNames.get(i))
+                        .qualifiedName(columnNames.get(i))
                         .type(expressions.get(i).getType())
                         .build());
             }

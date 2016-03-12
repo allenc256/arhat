@@ -1,8 +1,11 @@
 package org.testdb.relation;
 
+import java.util.Set;
+
 import org.immutables.value.Value;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import com.google.common.collect.SortedMultiset;
 
 /**
@@ -40,11 +43,18 @@ public abstract class AbstractSortedMultisetRelation implements IndexedRelation 
                 LexicographicTupleOrdering.INSTANCE.equals(getTuplesSortedMultiset().comparator()),
                 "Only the lexicographic tuple ordering is currently supported.");
         
-        for (String columnName : getTupleSchema().getColumnSchemasByName().keySet()) {
+        for (ColumnSchema cs : getTupleSchema().getColumnSchemas()) {
             Preconditions.checkState(
-                    getTupleSchema().getColumnSchemasByName().get(columnName).size() == 1,
-                    "Column name '%s' must be unique.",
-                    columnName);
+                    cs.getQualifiedName().getQualifier().equals(getName()),
+                    "Qualifier name must match relation name.");
+        }
+        
+        Set<QualifiedName> allNames = Sets.newHashSet();
+        for (ColumnSchema cs : getTupleSchema().getColumnSchemas()) {
+            Preconditions.checkState(
+                    allNames.add(cs.getQualifiedName()),
+                    "Column name '%s' is specified twice.",
+                    cs.getQualifiedName());
         }
     }
 }

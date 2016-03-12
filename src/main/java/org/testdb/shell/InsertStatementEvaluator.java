@@ -8,6 +8,7 @@ import org.testdb.expression.LiteralVisitor;
 import org.testdb.parse.SQLParser.InsertStatementContext;
 import org.testdb.parse.SQLParser.LiteralContext;
 import org.testdb.relation.ColumnSchema;
+import org.testdb.relation.ImmutableQualifiedName;
 import org.testdb.relation.ImmutableTuple;
 import org.testdb.relation.SortedMultisetRelation;
 import org.testdb.relation.Tuple;
@@ -72,8 +73,9 @@ public class InsertStatementEvaluator {
         for (int i = 0; i < columnNames.size(); ++i) {
             String name = columnNames.get(i);
             Object value = columnValues.get(i);
-            ColumnSchema cs = Iterables.getOnlyElement(
-                    relation.getTupleSchema().getColumnSchemas(name));
+            ColumnSchema cs = Iterables.getOnlyElement(relation
+                    .getTupleSchema()
+                    .getColumnSchemas(ImmutableQualifiedName.of(name)));
             values.set(cs.getIndex(), value);
         }
         

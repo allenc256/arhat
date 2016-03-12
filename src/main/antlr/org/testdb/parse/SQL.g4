@@ -57,7 +57,7 @@ selectStatementColumns
   
 selectStatementColumn
   : STAR_SYMBOL                         # selectStatementColumnStar
-  | expression                          # selectStatementColumnExpression
+  | expression (AS ID)?                 # selectStatementColumnExpression
   ;
 
 selectStatementFromClause
@@ -70,7 +70,7 @@ selectStatementWhereClause
 
 // N.B., order below is important for associativity rules.
 expression
-  : ID                                  # expressionId
+  : (ID '.')? ID                        # expressionId
   | literal                             # expressionLiteral
   | '(' expression ')'                  # expressionParens
   | expression CONCAT_SYMBOL expression # expressionConcat
@@ -88,6 +88,7 @@ expression
 NEWLINE: '\r'? '\n' -> skip;
 WS: ( ' ' | '\t' | '\n' | '\r' )+ -> skip;
 
+AS: A S;
 AND: A N D;
 BOOLEAN: B O O L E A N;
 CREATE: C R E A T E;

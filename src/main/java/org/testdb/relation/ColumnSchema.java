@@ -5,7 +5,7 @@ import org.testdb.type.SqlType;
 public interface ColumnSchema {
     int getIndex();
     
-    String getName();
+    QualifiedName getQualifiedName();
     
     SqlType getType();
 }
