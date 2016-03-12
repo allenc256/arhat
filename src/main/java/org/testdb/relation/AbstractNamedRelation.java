@@ -1,16 +1,18 @@
 package org.testdb.relation;
 
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.immutables.value.Value;
 
-// N.B., this wrapper should work even when the specified name is absent ---
+// N.B., this wrapper should work even when no name is specified ---
 // this is useful for removing all qualifiers from the schema of the
-// relation. For example, this is used in sub-selects without explicitly
-// specified names.
+// relation. For example, this is used in evaluating "anonymous" sub-selects.
 @Value.Immutable
 public abstract class AbstractNamedRelation implements Relation {
     public abstract Relation getSourceRelation();
+    
+    public abstract Set<String> getAliases();
     
     @Value.Derived
     @Override
@@ -29,17 +31,9 @@ public abstract class AbstractNamedRelation implements Relation {
     }
 
     private ColumnSchema renameQualifier(ColumnSchema cs) {
-        if (!cs.getQualifiedName().isPresent()) {
-            return cs;
-        }
-        
-        QualifiedName newName = ImmutableQualifiedName.builder()
-                .from(cs.getQualifiedName().get())
-                .qualifier(getName())
-                .build();
         return ImmutableColumnSchema.builder()
                 .from(cs)
-                .qualifiedName(newName)
+                .qualifierAliases(getAliases())
                 .build();
     }
 

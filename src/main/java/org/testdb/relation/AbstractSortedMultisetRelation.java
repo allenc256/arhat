@@ -44,21 +44,13 @@ public abstract class AbstractSortedMultisetRelation implements IndexedRelation 
                 LexicographicTupleOrdering.INSTANCE.equals(getTuplesSortedMultiset().comparator()),
                 "Only the lexicographic tuple ordering is currently supported.");
         
-        Set<QualifiedName> allNames = Sets.newHashSet();
+        Set<String> allNames = Sets.newHashSet();
         
         for (ColumnSchema cs : getTupleSchema().getColumnSchemas()) {
-            if (!cs.getQualifiedName().isPresent()) {
-                continue;
-            }
-            
             Preconditions.checkState(
-                    cs.getQualifiedName().get().getQualifier().equals(getName()),
-                    "Qualifier name must match relation name.");
-            
-            Preconditions.checkState(
-                    allNames.add(cs.getQualifiedName().get()),
+                    !cs.getName().isPresent() || allNames.add(cs.getName().get()),
                     "Column name '%s' is specified twice.",
-                    cs.getQualifiedName());
+                    cs.getName().get());
         }
     }
 }

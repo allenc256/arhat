@@ -20,12 +20,13 @@ public interface TupleSchema {
         return getColumnSchemas()
                 .stream()
                 .filter(cs -> {
-                    if (!cs.getQualifiedName().isPresent()) {
+                    if (!cs.getName().isPresent()) {
                         return false;
                     }
-                    Optional<String> csQualifier = cs.getQualifiedName().get().getQualifier();
-                    String csName = cs.getQualifiedName().get().getName();
-                    return (!qualifier.isPresent() || qualifier.equals(csQualifier)) && name.equals(csName);
+                    if (qualifier.isPresent() && !cs.getQualifierAliases().contains(qualifier.get())) {
+                        return false;
+                    }
+                    return name.equals(cs.getName().get());
                 })
                 .collect(Collectors.toList());
     }

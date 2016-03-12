@@ -8,7 +8,6 @@ import org.testdb.parse.SQLParser.ColumnDefinitionContext;
 import org.testdb.parse.SQLParser.CreateTableStatementContext;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
-import org.testdb.relation.ImmutableQualifiedName;
 import org.testdb.relation.ImmutableTupleSchema;
 import org.testdb.relation.LexicographicTupleOrdering;
 import org.testdb.relation.SortedMultisetRelation;
@@ -16,6 +15,7 @@ import org.testdb.relation.TupleSchema;
 import org.testdb.type.SqlType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.TreeMultiset;
 
@@ -34,7 +34,6 @@ public class CreateTableStatementEvaluator {
                 .build();
         
         SortedMultisetRelation table = SortedMultisetRelation.builder()
-                .name(tableName)
                 .tupleSchema(tupleSchema)
                 .tuplesSortedMultiset(TreeMultiset.create(LexicographicTupleOrdering.INSTANCE))
                 .build();
@@ -62,7 +61,8 @@ public class CreateTableStatementEvaluator {
         public Void visitColumnDefinition(ColumnDefinitionContext ctx) {
             columnSchemas.add(ImmutableColumnSchema.builder()
                     .index(columnSchemas.size())
-                    .qualifiedName(ImmutableQualifiedName.of(tableName, ctx.ID().getText()))
+                    .qualifierAliases(ImmutableSet.of(tableName))
+                    .name(ctx.ID().getText())
                     .type(SqlType.valueOf(ctx.type.getText().toUpperCase()))
                     .build());
             return null;

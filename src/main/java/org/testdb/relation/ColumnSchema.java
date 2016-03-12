@@ -1,5 +1,7 @@
 package org.testdb.relation;
 
+import java.util.Set;
+
 import org.testdb.type.SqlType;
 
 import com.google.common.base.Optional;
@@ -7,7 +9,9 @@ import com.google.common.base.Optional;
 public interface ColumnSchema {
     int getIndex();
     
-    Optional<QualifiedName> getQualifiedName();
+    Set<String> getQualifierAliases();
+    
+    Optional<String> getName();
     
     SqlType getType();
 }

@@ -14,7 +14,6 @@ import org.testdb.parse.SQLParser.SelectStatementColumnStarContext;
 import org.testdb.parse.SQLParser.SelectStatementContext;
 import org.testdb.parse.SQLParser.SelectStatementFromSubqueryContext;
 import org.testdb.parse.SQLParser.SelectStatementFromTableContext;
-import org.testdb.parse.SQLParser.SelectStatementFromTableOrSubqueryWithAliasContext;
 import org.testdb.parse.expression.ExpressionParser;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
@@ -22,10 +21,8 @@ import org.testdb.relation.ImmutableFilteredRelation;
 import org.testdb.relation.ImmutableNamedRelation;
 import org.testdb.relation.ImmutableNestedLoopJoinRelation;
 import org.testdb.relation.ImmutableProjectedRelation;
-import org.testdb.relation.ImmutableQualifiedName;
 import org.testdb.relation.ImmutableTupleSchema;
 import org.testdb.relation.JoinPredicates;
-import org.testdb.relation.QualifiedName;
 import org.testdb.relation.Relation;
 import org.testdb.relation.Tuple;
 import org.testdb.relation.TupleSchema;
@@ -33,12 +30,13 @@ import org.testdb.relation.TupleSchema;
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Predicate;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
 public class SelectStatementParser {
     public Relation parse(InMemoryDatabase database, SelectStatementContext ctx) {
         Relation relation = ctx.selectStatementFromClause()
-                .selectStatementFromTableOrSubqueryWithAlias()
+                .selectStatementFromTableOrSubquery()
                 .stream()
                 .map(s -> s.accept(new FromClauseVisitor(database)))
                 .reduce((r1, r2) -> joinRelations(r1, r2))
@@ -103,7 +101,7 @@ public class SelectStatementParser {
     
     private static class ColumnsVisitor extends SQLBaseVisitor<Void> {
         private final List<Expression> expressions = Lists.newArrayList();
-        private final List<Optional<QualifiedName>> columnNames = Lists.newArrayList();
+        private final List<Optional<String>> columnNames = Lists.newArrayList();
         private final TupleSchema sourceTupleSchema;
 
         private ColumnsVisitor(TupleSchema sourceTupleSchema) {
@@ -112,13 +110,34 @@ public class SelectStatementParser {
 
         @Override
         public Void visitSelectStatementColumnStar(SelectStatementColumnStarContext ctx) {
+            Optional<String> qualifier = ctx.ID() != null ?
+                    Optional.of(ctx.ID().getText()) :
+                    Optional.absent();
+                    
+            if (qualifier.isPresent()) {
+                boolean validQualifier = sourceTupleSchema.getColumnSchemas()
+                        .stream()
+                        .filter(cs -> cs.getQualifierAliases().contains(qualifier.get()))
+                        .findAny()
+                        .isPresent();
+                Preconditions.checkState(
+                        validQualifier,
+                        "Qualifier '%s' does not match any input relations.",
+                        qualifier.get());
+            }
+            
             for (int i = 0; i < sourceTupleSchema.size(); ++i) {
                 ColumnSchema cs = sourceTupleSchema.getColumnSchema(i);
+                
+                if (qualifier.isPresent() && !cs.getQualifierAliases().contains(qualifier.get())) {
+                    continue;
+                }
+                
                 expressions.add(ImmutableExtractIndexExpression.builder()
                         .tupleIndex(i)
                         .type(sourceTupleSchema.getColumnSchema(i).getType())
                         .build());
-                columnNames.add(cs.getQualifiedName());
+                columnNames.add(cs.getName());
             }
             
             return null;
@@ -132,9 +151,9 @@ public class SelectStatementParser {
             expressions.add(expression);
             
             if (ctx.ID() != null) {
-                columnNames.add(Optional.of(ImmutableQualifiedName.of(ctx.ID().getText())));
+                columnNames.add(Optional.of(ctx.ID().getText()));
             } else if (expression instanceof AbstractIdentifierExpression) {
-                columnNames.add(Optional.of(((AbstractIdentifierExpression)expression).getColumnName()));
+                columnNames.add(Optional.of(((AbstractIdentifierExpression)expression).getColumnName().getName()));
             } else {
                 columnNames.add(Optional.absent());
             }
@@ -156,7 +175,7 @@ public class SelectStatementParser {
             for (int i = 0; i < expressions.size(); ++i) {
                 columns.add(ImmutableColumnSchema.builder()
                         .index(i)
-                        .qualifiedName(columnNames.get(i))
+                        .name(columnNames.get(i))
                         .type(expressions.get(i).getType())
                         .build());
             }
@@ -173,38 +192,52 @@ public class SelectStatementParser {
         }
         
         @Override
-        public Relation visitSelectStatementFromTableOrSubqueryWithAlias(SelectStatementFromTableOrSubqueryWithAliasContext ctx) {
-            Relation relation = ctx.selectStatementFromTableOrSubquery().accept(this);
-            Preconditions.checkState(relation != null, "Failed to parse from clause.");
-            
-            // N.B., it's important that we wrap the sub-query in a
-            // ImmutableNamedRelation wrapper here even if no explicit subquery
-            // name was specfied in the query. In this case, the wrapper ensures
-            // that qualifiers in the subquery don't "leak" out of the subquery.
-            Optional<String> subQueryName = ctx.ID() != null ? 
-                    Optional.of(ctx.ID().getText()) : 
-                    Optional.absent();
-            return ImmutableNamedRelation.builder()
-                    .sourceRelation(relation)
-                    .name(subQueryName)
-                    .build();
-        }
-
-        @Override
         public Relation visitSelectStatementFromTable(SelectStatementFromTableContext ctx) {
-            String tableName = ctx.ID().getText();
+            String tableName = ctx.ID(0).getText();
             Relation relation = database.getTables().get(tableName);
+            
             Preconditions.checkState(
                     relation != null,
                     "Relation '%s' does not exist.",
                     tableName);
+            Preconditions.checkState(
+                    ctx.ID().size() <= 2,
+                    "Expected at most two ID tokens.");
+            
+            if (ctx.ID().size() > 1) { 
+                // N.B., it should be possible to refer to the table using
+                // *either* the full table name or the alias in this case.
+                relation = ImmutableNamedRelation.builder()
+                        .sourceRelation(relation)
+                        .aliases(ImmutableSet.of(tableName, ctx.ID(1).getText()))
+                        .build();
+            }
+            
             return relation;
         }
 
         @Override
         public Relation visitSelectStatementFromSubquery(SelectStatementFromSubqueryContext ctx) {
             SelectStatementParser parser = new SelectStatementParser();
-            return parser.parse(database, ctx.selectStatement());
+            Relation relation = parser.parse(database, ctx.selectStatement());
+            
+            if (ctx.ID() != null) {
+                relation = ImmutableNamedRelation.builder()
+                        .sourceRelation(relation)
+                        .aliases(ImmutableSet.of(ctx.ID().getText()))
+                        .build();
+            } else {
+                // N.B., it's important that we wrap the sub-query in a
+                // ImmutableNamedRelation wrapper here even if no explicit
+                // subquery name was specfied in the query. In this case, the
+                // wrapper ensures that qualifiers in the subquery don't "leak"
+                // out of the subquery.
+                relation = ImmutableNamedRelation.builder()
+                        .sourceRelation(relation)
+                        .build();
+            }
+            
+            return relation;
         }
     }
 }

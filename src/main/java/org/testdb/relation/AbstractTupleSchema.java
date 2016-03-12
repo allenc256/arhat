@@ -13,8 +13,7 @@ public abstract class AbstractTupleSchema implements TupleSchema {
             ColumnSchema cs = getColumnSchema(i);
             Preconditions.checkState(
                     cs.getIndex() == i,
-                    "Column '%s' has incorrect index (was %d but expected %d).",
-                    cs.getQualifiedName(),
+                    "Column has incorrect index (was %d but expected %d).",
                     cs.getIndex(),
                     i);
         }

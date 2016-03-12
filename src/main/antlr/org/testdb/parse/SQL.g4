@@ -60,21 +60,17 @@ selectStatementColumns
   ;
   
 selectStatementColumn
-  : STAR_SYMBOL                         # selectStatementColumnStar
+  : (ID '.')? STAR_SYMBOL               # selectStatementColumnStar
   | expression (AS ID)?                 # selectStatementColumnExpression
   ;
 
 selectStatementFromClause
-  : FROM selectStatementFromTableOrSubqueryWithAlias (',' selectStatementFromTableOrSubqueryWithAlias)*
+  : FROM selectStatementFromTableOrSubquery (',' selectStatementFromTableOrSubquery)*
   ;
   
-selectStatementFromTableOrSubqueryWithAlias
-  : selectStatementFromTableOrSubquery ID?
-  ;
-
 selectStatementFromTableOrSubquery
-  : ID                                  # selectStatementFromTable
-  | '(' selectStatement ')'             # selectStatementFromSubquery
+  : ID ID?                              # selectStatementFromTable
+  | '(' selectStatement ')' ID?         # selectStatementFromSubquery
   ;
 
 selectStatementWhereClause
