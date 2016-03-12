@@ -8,11 +8,9 @@ import com.google.common.base.Preconditions;
 /**
  * Notes on semantics here:
  * <ul>
- * <li>If the set of input values in a partition is empty, the sum is NULL.</li>
- * <li>If the set of input values in a partition are all NULL, the sum is NULL.
- * </li>
- * <li>Otherwise, the sum is the sum of all non-null integers in the partition.
- * </li>
+ * <li>If the set of input values is empty, the sum is NULL.</li>
+ * <li>If the set of input values are all NULL, the sum is NULL.</li>
+ * <li>Otherwise, the sum is the sum of all non-null input integers.</li>
  * </ul>
  */
 public class SumIntegersAggregator extends ExpressionAggregator<Integer, Integer, Integer> {
