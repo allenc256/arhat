@@ -1,5 +1,7 @@
 package org.testdb.relation;
 
+import java.util.stream.Stream;
+
 import com.google.common.collect.ForwardingObject;
 
 public abstract class ForwardingRelation extends ForwardingObject implements Relation {
@@ -12,7 +14,7 @@ public abstract class ForwardingRelation extends ForwardingObject implements Rel
     }
 
     @Override
-    public Cursor<Tuple> getTuples() {
-        return delegate().getTuples();
+    public Stream<Tuple> getTupleStream() {
+        return delegate().getTupleStream();
     }
 }

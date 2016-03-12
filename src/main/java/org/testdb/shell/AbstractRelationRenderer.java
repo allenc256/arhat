@@ -2,10 +2,11 @@ package org.testdb.shell;
 
 import java.io.PrintStream;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.immutables.value.Value;
 import org.testdb.relation.ColumnSchema;
-import org.testdb.relation.Cursor;
 import org.testdb.relation.Relation;
 import org.testdb.relation.Tuple;
 
@@ -65,20 +66,20 @@ public abstract class AbstractRelationRenderer {
     }
 
     public void render() {
-        List<Tuple> tuples = Lists.newArrayList();
-        boolean reachedLimit = true;
+        List<Tuple> tuples;
+        boolean reachedLimit = false;
 
-        // Extract the tuples up to the limit.
-        try (Cursor<Tuple> c = getRelation().getTuples()) {
-            for (int i = 0; i < getLimit(); ++i) {
-                if (!c.hasNext()) {
-                    reachedLimit = false;
-                    break;
-                }
-                tuples.add(c.next());
-            }
+        // Grab limit + 1 tuples ("+ 1" so that we can detect if there are more
+        // than the limit).
+        try (Stream<Tuple> c = getRelation().getTupleStream()) {
+            tuples = c.limit(getLimit() + 1).collect(Collectors.toList());
         } catch (Exception e) {
             throw Throwables.propagate(e);
+        }
+
+        if (tuples.size() > getLimit()) {
+            tuples = tuples.subList(0, tuples.size() - 1);
+            reachedLimit = true;
         }
             
         List<ColumnFormat> formats = computeColumnFormats(tuples);

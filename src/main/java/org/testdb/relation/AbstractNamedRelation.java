@@ -2,6 +2,7 @@ package org.testdb.relation;
 
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.immutables.value.Value;
 
@@ -38,7 +39,7 @@ public abstract class AbstractNamedRelation implements Relation {
     }
 
     @Override
-    public Cursor<Tuple> getTuples() {
-        return getSourceRelation().getTuples();
+    public Stream<Tuple> getTupleStream() {
+        return getSourceRelation().getTupleStream();
     }
 }

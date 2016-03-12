@@ -1,6 +1,7 @@
 package org.testdb.relation;
 
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.immutables.value.Value;
 import org.testdb.expression.Expression;
@@ -16,27 +17,17 @@ public abstract class AbstractProjectedRelation implements Relation {
     public abstract Relation getSourceRelation();
 
     @Override
-    public Cursor<Tuple> getTuples() {
-        Cursor<Tuple> tuples = getSourceRelation().getTuples();
-        return new ForwardingCursor<Tuple>() {
-            @Override
-            protected Cursor<Tuple> delegate() {
-                return tuples;
+    public Stream<Tuple> getTupleStream() {
+        return getSourceRelation().getTupleStream().map(tuple -> {
+            List<Object> values = Lists.newArrayListWithCapacity(
+                    getTupleSchema().size());
+            
+            for (Expression expression : getExpressions()) {
+                values.add(expression.evaluate(tuple));
             }
-
-            @Override
-            public Tuple next() {
-                Tuple source = delegate().next();
-                List<Object> values = Lists.newArrayListWithCapacity(
-                        getTupleSchema().size());
-                
-                for (Expression expression : getExpressions()) {
-                    values.add(expression.evaluate(source));
-                }
-                
-                return ImmutableTuple.builder().values(values).build();
-            }
-        };
+            
+            return ImmutableTuple.builder().values(values).build();
+        });
     }
 
     @Value.Check

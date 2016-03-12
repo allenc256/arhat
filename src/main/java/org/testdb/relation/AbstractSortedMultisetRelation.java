@@ -1,6 +1,7 @@
 package org.testdb.relation;
 
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.immutables.value.Value;
 
@@ -19,12 +20,12 @@ public abstract class AbstractSortedMultisetRelation implements IndexedRelation 
     abstract SortedMultiset<Tuple> getTuplesSortedMultiset();
 
     @Override
-    public Cursor<Tuple> getTuples() {
-        return new CursorAdapter<>(getTuplesSortedMultiset().iterator());
+    public Stream<Tuple> getTupleStream() {
+        return getTuplesSortedMultiset().stream();
     }
 
     @Override
-    public Cursor<Tuple> getTuples(TupleRange range) {
+    public Stream<Tuple> getTuples(TupleRange range) {
         SortedMultiset<Tuple> set = getTuplesSortedMultiset();
         
         if (range.getLowerBound().isPresent()) {
@@ -35,7 +36,7 @@ public abstract class AbstractSortedMultisetRelation implements IndexedRelation 
             set = set.headMultiset(range.getUpperBound().get(), range.getUpperBoundType());
         }
         
-        return new CursorAdapter<>(set.iterator());
+        return set.stream();
     }
     
     @Value.Check

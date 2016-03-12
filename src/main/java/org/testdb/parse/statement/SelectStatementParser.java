@@ -1,6 +1,7 @@
 package org.testdb.parse.statement;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 import org.testdb.database.InMemoryDatabase;
 import org.testdb.expression.AbstractIdentifierExpression;
@@ -17,19 +18,19 @@ import org.testdb.parse.SQLParser.SelectStatementFromTableContext;
 import org.testdb.parse.expression.ExpressionParser;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
+import org.testdb.relation.ImmutableDistinctRelation;
 import org.testdb.relation.ImmutableFilteredRelation;
 import org.testdb.relation.ImmutableNamedRelation;
 import org.testdb.relation.ImmutableNestedLoopJoinRelation;
 import org.testdb.relation.ImmutableProjectedRelation;
 import org.testdb.relation.ImmutableTupleSchema;
-import org.testdb.relation.JoinPredicates;
 import org.testdb.relation.Relation;
 import org.testdb.relation.Tuple;
 import org.testdb.relation.TupleSchema;
+import org.testdb.type.SqlType;
 
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Predicate;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 
@@ -43,25 +44,22 @@ public class SelectStatementParser {
                 .get();
         relation = applyFilterIfNecessary(ctx, relation);
         relation = applyProjectionIfNecessary(ctx, relation);
+        relation = applyDistinctIfNecessary(ctx, relation);
         return relation;
     }
     
     private Relation joinRelations(Relation r1, Relation r2) {
         return ImmutableNestedLoopJoinRelation.builder()
-                .fromRelation(r1)
-                .toRelation(r2)
-                .joinPredicate(JoinPredicates.alwaysTrue())
+                .leftRelation(r1)
+                .rightRelation(r2)
                 .build();
     }
     
     private Predicate<Tuple> toPredicate(Expression expression) {
-        return t -> {
-            Object result = expression.evaluate(t);
-            Preconditions.checkState(
-                    result instanceof Boolean,
-                    "Predicate expression must be boolean-typed.");
-            return (Boolean)result;
-        };
+        Preconditions.checkState(
+                expression.getType() == SqlType.BOOLEAN,
+                "Predicate expression must be boolean-typed.");
+        return t -> (Boolean)expression.evaluate(t);
     }
     
     private Relation applyFilterIfNecessary(SelectStatementContext ctx,
@@ -97,6 +95,15 @@ public class SelectStatementParser {
                 .sourceRelation(relation)
                 .tupleSchema(visitor.getTargetTupleSchema())
                 .build();
+    }
+    
+    private Relation applyDistinctIfNecessary(SelectStatementContext ctx,
+                                              Relation relation) {
+        if (ctx.DISTINCT() != null) {
+            return ImmutableDistinctRelation.builder().sourceRelation(relation).build();
+        } else {
+            return relation;
+        }
     }
     
     private static class ColumnsVisitor extends SQLBaseVisitor<Void> {

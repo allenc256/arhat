@@ -1,5 +1,7 @@
 package org.testdb.relation;
 
+import java.util.stream.Stream;
+
 public interface IndexedRelation extends Relation {
-    Cursor<Tuple> getTuples(TupleRange range);
+    Stream<Tuple> getTuples(TupleRange range);
 }

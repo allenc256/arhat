@@ -52,7 +52,7 @@ literal
   ;
   
 selectStatement
-  : SELECT selectStatementColumns selectStatementFromClause selectStatementWhereClause?
+  : SELECT DISTINCT? selectStatementColumns selectStatementFromClause selectStatementWhereClause?
   ;
   
 selectStatementColumns
@@ -104,6 +104,7 @@ AS: A S;
 AND: A N D;
 BOOLEAN: B O O L E A N;
 CREATE: C R E A T E;
+DISTINCT: D I S T I N C T;
 DROP: D R O P;
 FROM: F R O M;
 INSERT: I N S E R T;

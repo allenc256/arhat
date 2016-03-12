@@ -1,7 +1,9 @@
 package org.testdb.relation;
 
+import java.util.stream.Stream;
+
 public interface Relation {
     TupleSchema getTupleSchema();
     
-    Cursor<Tuple> getTuples();
+    Stream<Tuple> getTupleStream();
 }

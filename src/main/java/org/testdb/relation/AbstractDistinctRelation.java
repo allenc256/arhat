@@ -1,15 +1,12 @@
 package org.testdb.relation;
 
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.immutables.value.Value;
 
 @Value.Immutable
-public abstract class AbstractFilteredRelation implements Relation {
+public abstract class AbstractDistinctRelation implements Relation {
     public abstract Relation getSourceRelation();
-    
-    public abstract Predicate<Tuple> getFilterPredicate();
     
     @Override
     public TupleSchema getTupleSchema() {
@@ -18,6 +15,6 @@ public abstract class AbstractFilteredRelation implements Relation {
 
     @Override
     public Stream<Tuple> getTupleStream() {
-        return getSourceRelation().getTupleStream().filter(getFilterPredicate());
+        return getSourceRelation().getTupleStream().distinct();
     }
 }
