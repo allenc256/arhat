@@ -86,11 +86,14 @@ expression
   : (ID '.')? ID                        # expressionId
   | literal                             # expressionLiteral
   | '(' expression ')'                  # expressionParens
+  | MINUS_SYMBOL expression             # expressionNegate
   | expression CONCAT_SYMBOL expression # expressionConcat
   | expression op=('*'|'/') expression  # expressionMultDiv
   | expression op=('+'|'-') expression  # expressionPlusMinus
-  | expression op=('<'|'>'|'<='|'>='|'=') expression # expressionCompare
+  | expression op=('<'|'>'|'<='|'>='|'=') expression  # expressionCompare
   | NOT expression                      # expressionNot
+  | expression IS NULL_LITERAL          # expressionIsNull
+  | expression IS NOT NULL_LITERAL      # expressionIsNotNull
   | expression op=(AND|OR) expression   # expressionAndOr
   ;
 
@@ -110,6 +113,7 @@ FROM: F R O M;
 INSERT: I N S E R T;
 INTEGER: I N T E G E R;
 INTO: I N T O;
+IS: I S;
 TABLE: T A B L E;
 SELECT: S E L E C T;
 STRING: S T R I N G;
