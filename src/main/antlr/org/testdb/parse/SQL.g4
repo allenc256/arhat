@@ -50,8 +50,7 @@ selectStatementColumns
   ;
   
 selectStatementColumn
-  : STAR
-  | ID
+  : column=(STAR|ID)
   ;
 
 selectStatementFromClause
