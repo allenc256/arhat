@@ -28,7 +28,6 @@ public class CreateTableStatementEvaluator {
                 "Table %s already exists.",
                 tableName);
         
-        
         TupleSchema tupleSchema = ImmutableTupleSchema.builder()
                 .columnSchemas(tableColumns)
                 .build();

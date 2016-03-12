@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import org.testdb.database.InMemoryDatabase;
 import org.testdb.parse.SQLParser;
+import org.testdb.parse.SqlStrings;
 import org.testdb.parse.SQLParser.InsertStatementContext;
 import org.testdb.parse.SQLParser.InsertStatementValueContext;
 import org.testdb.relation.ColumnSchema;
@@ -78,7 +79,11 @@ public class InsertStatementEvaluator {
         case SQLParser.NULL:
             return null;
         case SQLParser.STRING_LITERAL:
-            return value.getText();
+            String s = value.getText();
+            Preconditions.checkState(
+                    s.startsWith("'") && s.endsWith("'"),
+                    "Cannot parse string literal token.");
+            return SqlStrings.unescape(s.substring(1, s.length() - 1));
         case SQLParser.INTEGER_LITERAL:
             return Integer.parseInt(value.getText());
         default:

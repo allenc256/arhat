@@ -80,7 +80,7 @@ NULL: N U L L;
 TRUE: T R U E;
 FALSE: F A L S E;
 INTEGER_LITERAL: '0' .. '9'+;
-STRING_LITERAL: '\'' (~('\'' | '\r' | '\n') | '\'' '\'' | ('\r'? '\n'))* '\'';
+STRING_LITERAL: '\'' (~('\'' | '\r' | '\n') | '\'' '\'')* '\'';
 
 STAR: '*';
 
