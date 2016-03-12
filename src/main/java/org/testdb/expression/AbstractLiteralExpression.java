@@ -1,9 +1,9 @@
 package org.testdb.expression;
 
+import javax.annotation.Nullable;
+
 import org.immutables.value.Value;
 import org.testdb.relation.Tuple;
-
-import com.sun.istack.internal.Nullable;
 
 @Value.Immutable
 public abstract class AbstractLiteralExpression implements Expression {

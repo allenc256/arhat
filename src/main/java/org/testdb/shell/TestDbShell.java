@@ -43,6 +43,7 @@ public class TestDbShell {
             System.err.flush();
         } catch (Exception e) {
             e.printStackTrace(System.err);
+            System.err.println();
             System.err.flush();
         }
     }

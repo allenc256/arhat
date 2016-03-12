@@ -22,6 +22,7 @@ repositories {
 }
 
 dependencies {
+  compile "com.google.code.findbugs:jsr305:3.0.0"
   compile "com.google.guava:guava:19.0"
   compile "jline:jline:2.11"
 

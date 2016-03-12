@@ -12,6 +12,7 @@ import org.testdb.parse.SQLParser.ExpressionConcatContext;
 import org.testdb.parse.SQLParser.ExpressionIdContext;
 import org.testdb.parse.SQLParser.ExpressionLiteralContext;
 import org.testdb.parse.SQLParser.ExpressionMultDivContext;
+import org.testdb.parse.SQLParser.ExpressionNotContext;
 import org.testdb.parse.SQLParser.ExpressionParensContext;
 import org.testdb.parse.SQLParser.ExpressionPlusMinusContext;
 import org.testdb.relation.TupleSchema;
@@ -46,6 +47,13 @@ public class ExpressionVisitor extends SQLBaseVisitor<Expression> {
         return ImmutableIdentifierExpression.builder()
                 .tupleSchema(tupleSchema)
                 .columnName(ctx.ID().getText())
+                .build();
+    }
+    
+    @Override
+    public Expression visitExpressionNot(ExpressionNotContext ctx) {
+        return ImmutableNotExpression.builder()
+                .sourceExpression(ctx.expression().accept(this))
                 .build();
     }
 
@@ -88,7 +96,7 @@ public class ExpressionVisitor extends SQLBaseVisitor<Expression> {
                 ctx.expression(1).accept(this),
                 ctx.op);
     }
-    
+
     private Expression parseExpressionBinary(Expression left,
                                              Expression right,
                                              Token opToken) {
@@ -172,7 +180,9 @@ public class ExpressionVisitor extends SQLBaseVisitor<Expression> {
                 Maps.immutableEntry(inputType, opToken.getType()));
         if (op == null) {
             throw new UnsupportedOperationException(String.format(
-                    "Unrecognized operator '%s'.", opToken.getText()));
+                    "Do not know how to parse operator '%s' against input type %s.",
+                    opToken.getText(),
+                    inputType));
         }
         return op;
     }
@@ -180,5 +190,6 @@ public class ExpressionVisitor extends SQLBaseVisitor<Expression> {
     @Override
     public Expression visitExpressionParens(ExpressionParensContext ctx) {
         return ctx.expression().accept(this);
+        
     }
 }

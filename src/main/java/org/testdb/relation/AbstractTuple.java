@@ -2,10 +2,11 @@ package org.testdb.relation;
 
 import java.util.List;
 
+import javax.annotation.Nullable;
+
 import org.immutables.value.Value;
 
 import com.google.common.base.Preconditions;
-import com.sun.istack.internal.Nullable;
 
 @Value.Immutable
 public abstract class AbstractTuple implements Tuple {

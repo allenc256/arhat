@@ -67,16 +67,17 @@ selectStatementFromClause
 selectStatementWhereClause
   : WHERE expression
   ;
-  
+
+// N.B., order below is important for associativity rules.
 expression
   : ID                                  # expressionId
   | literal                             # expressionLiteral
-  | NOT expression                      # expressionNot
   | '(' expression ')'                  # expressionParens
   | expression CONCAT_SYMBOL expression # expressionConcat
   | expression op=('*'|'/') expression  # expressionMultDiv
   | expression op=('+'|'-') expression  # expressionPlusMinus
   | expression op=('<'|'>'|'<='|'>='|'=') expression # expressionCompare
+  | NOT expression                      # expressionNot
   | expression op=(AND|OR) expression   # expressionAndOr
   ;
 
