@@ -9,6 +9,7 @@ import org.testdb.expression.ImmutableUnaryExpression;
 import org.testdb.expression.UnaryOperator;
 import org.testdb.expression.UnaryOperators;
 import org.testdb.parse.SQLParser;
+import org.testdb.parse.SqlParseException;
 import org.testdb.type.SqlType;
 
 import com.google.common.collect.ImmutableMap;
@@ -54,8 +55,10 @@ public class UnaryOperatorExpressionParser {
         case SQLParser.MINUS_SYMBOL:
             return inputType;
         default:
-            throw new UnsupportedOperationException(String.format(
-                    "Unrecognized operator '%s'.", opToken.getText()));
+            throw SqlParseException.create(
+                    opToken,
+                    "unrecognized operator '%s'.",
+                    opToken.getText());
         }
     }
     
@@ -63,10 +66,11 @@ public class UnaryOperatorExpressionParser {
         UnaryOperator<?, ?> op = OPERATOR_TABLE.get(
                 Maps.immutableEntry(inputType, opToken.getType()));
         if (op == null) {
-            throw new UnsupportedOperationException(String.format(
-                    "Do not know how to parse operator '%s' against input type %s.",
+            throw SqlParseException.create(
+                    opToken,
+                    "do not know how to parse operator '%s' against input type %s.",
                     opToken.getText(),
-                    inputType));
+                    inputType);
         }
         return op;
     }

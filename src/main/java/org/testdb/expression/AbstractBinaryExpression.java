@@ -25,10 +25,8 @@ public abstract class AbstractBinaryExpression implements Expression {
     protected void check() {
         SqlType left = getLeftExpression().getType();
         SqlType right = getRightExpression().getType();
-        Preconditions.checkState(
-                left.equals(SqlType.NULL) || right.equals(SqlType.NULL) || left.equals(right),
-                "Cannot operate on expressions with incompatible types (left type %s, right type %s).",
-                left,
-                right);
+        Preconditions.checkState(left.equals(SqlType.NULL) 
+                || right.equals(SqlType.NULL)
+                || left.equals(right));
     }
 }

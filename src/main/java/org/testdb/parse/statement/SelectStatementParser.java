@@ -1,7 +1,6 @@
 package org.testdb.parse.statement;
 
 import java.util.List;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.testdb.database.InMemoryDatabase;
@@ -18,6 +17,7 @@ import org.testdb.parse.SQLParser.SelectStatementColumnStarContext;
 import org.testdb.parse.SQLParser.SelectStatementContext;
 import org.testdb.parse.SQLParser.SelectStatementFromSubqueryContext;
 import org.testdb.parse.SQLParser.SelectStatementFromTableContext;
+import org.testdb.parse.SqlParseException;
 import org.testdb.parse.expression.ExpressionHasAggregationParser;
 import org.testdb.parse.expression.ExpressionParser;
 import org.testdb.relation.ColumnSchema;
@@ -30,7 +30,6 @@ import org.testdb.relation.ImmutableNestedLoopJoinRelation;
 import org.testdb.relation.ImmutableProjectedRelation;
 import org.testdb.relation.ImmutableTupleSchema;
 import org.testdb.relation.Relation;
-import org.testdb.relation.Tuple;
 import org.testdb.relation.TupleSchema;
 import org.testdb.type.SqlType;
 
@@ -63,15 +62,8 @@ public class SelectStatementParser {
                 .build();
     }
     
-    private Predicate<Tuple> toPredicate(Expression expression) {
-        Preconditions.checkState(
-                expression.getType() == SqlType.BOOLEAN,
-                "Predicate expression must be boolean-typed.");
-        return t -> (Boolean)expression.evaluate(t);
-    }
-    
     private Relation filterIfNecessary(SelectStatementContext ctx,
-                                               Relation relation) {
+                                       Relation relation) {
         if (ctx.selectStatementWhereClause() == null) {
             return relation;
         }
@@ -79,9 +71,16 @@ public class SelectStatementParser {
         Expression expression = ctx.selectStatementWhereClause()
                 .expression()
                 .accept(new ExpressionParser(relation.getTupleSchema()));
+        
+        if (expression.getType() != SqlType.BOOLEAN) {
+            throw SqlParseException.create(
+                    ctx.selectStatementWhereClause().WHERE().getSymbol(),
+                    "predicate must be boolean-typed.");
+        }
+        
         return ImmutableFilteredRelation.builder()
                 .sourceRelation(relation)
-                .filterPredicate(toPredicate(expression))
+                .filterPredicate(t -> (Boolean)expression.evaluate(t))
                 .build();
     }
     
@@ -217,10 +216,12 @@ public class SelectStatementParser {
                         .filter(cs -> cs.getQualifierAliases().contains(qualifier.get()))
                         .findAny()
                         .isPresent();
-                Preconditions.checkState(
-                        validQualifier,
-                        "Qualifier '%s' does not match any input relations.",
-                        qualifier.get());
+                if (!validQualifier) {
+                    throw SqlParseException.create(
+                            ctx.ID().getSymbol(),
+                            "qualifier '%s' does not match any input relations.",
+                            qualifier.get());
+                }
             }
             
             for (int i = 0; i < sourceTupleSchema.size(); ++i) {
@@ -262,9 +263,7 @@ public class SelectStatementParser {
         }
 
         public TupleSchema getTargetTupleSchema() {
-            Preconditions.checkState(
-                    expressions.size() == columnNames.size(),
-                    "Expression count and column name count mismatched.");
+            Preconditions.checkState(expressions.size() == columnNames.size());
             
             List<ColumnSchema> columns = Lists.newArrayList();
             
@@ -292,13 +291,18 @@ public class SelectStatementParser {
             String tableName = ctx.ID(0).getText().toLowerCase();
             Relation relation = database.getTables().get(tableName);
             
-            Preconditions.checkState(
-                    relation != null,
-                    "Relation '%s' does not exist.",
-                    tableName);
-            Preconditions.checkState(
-                    ctx.ID().size() <= 2,
-                    "Expected at most two ID tokens.");
+            if (relation == null) {
+                throw SqlParseException.create(
+                        ctx.ID(0).getSymbol(),
+                        "relation '%s' does not exist.",
+                        ctx.ID(0).getText());
+            }
+            
+            if (ctx.ID().size() > 2) {
+                throw SqlParseException.create(
+                        ctx.ID(2).getSymbol(),
+                        "expected at most two tokens.");
+            }
             
             if (ctx.ID().size() > 1) { 
                 // N.B., it should be possible to refer to the table using

@@ -23,16 +23,6 @@ public abstract class AbstractVariableExpression implements NamedExpression {
     public static Expression forIdentifier(TupleSchema tupleSchema,
                                            QualifiedName columnName) {
         Collection<ColumnSchema> css = tupleSchema.getColumnSchemas(columnName);
-        
-        Preconditions.checkState(
-                !css.isEmpty(),
-                "Column '%s' does not exist.",
-                columnName);
-        Preconditions.checkState(
-                css.size() <= 1,
-                "Column name '%s' is ambiguous.",
-                columnName);
-
         ColumnSchema cs = Iterables.getOnlyElement(css);
         return ImmutableVariableExpression.builder()
                 .variableIndex(cs.getIndex())

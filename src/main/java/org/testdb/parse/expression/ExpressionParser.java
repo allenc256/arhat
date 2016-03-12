@@ -1,5 +1,6 @@
 package org.testdb.parse.expression;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.antlr.v4.runtime.Token;
@@ -30,13 +31,14 @@ import org.testdb.parse.SQLParser.ExpressionNegateContext;
 import org.testdb.parse.SQLParser.ExpressionNotContext;
 import org.testdb.parse.SQLParser.ExpressionParensContext;
 import org.testdb.parse.SQLParser.ExpressionPlusMinusContext;
+import org.testdb.parse.SqlParseException;
+import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableQualifiedName;
 import org.testdb.relation.QualifiedName;
 import org.testdb.relation.TupleSchema;
 import org.testdb.type.SqlType;
 
 import com.google.common.base.Optional;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
 public class ExpressionParser extends SQLBaseVisitor<Expression> {
@@ -64,9 +66,11 @@ public class ExpressionParser extends SQLBaseVisitor<Expression> {
     public Expression visitExpressionLiteral(ExpressionLiteralContext ctx) {
         LiteralParser visitor = new LiteralParser();
         ctx.literal().accept(visitor);
-        Preconditions.checkState(
-                visitor.getType() != null,
-                "Failed to properly parse literal.");
+        if (visitor.getType() == null) {
+            throw SqlParseException.create(
+                    ctx.getStart(),
+                    "failed to parse literal.");
+        }
         return ImmutableLiteralExpression.builder()
                 .value(visitor.getValue())
                 .type(visitor.getType())
@@ -76,14 +80,35 @@ public class ExpressionParser extends SQLBaseVisitor<Expression> {
     @Override
     public Expression visitExpressionId(ExpressionIdContext ctx) {
         QualifiedName columnName;
+        Token columnNameToken;
+        
         if (ctx.ID().size() == 1) {
             columnName = ImmutableQualifiedName.of(ctx.ID(0).getText());
+            columnNameToken = ctx.ID(0).getSymbol();
         } else if (ctx.ID().size() == 2) {
             columnName = ImmutableQualifiedName.of(ctx.ID(0).getText(), ctx.ID(1).getText());
+            columnNameToken = ctx.ID(1).getSymbol();
         } else {
-            throw new IllegalStateException("Failed to parse identifier expression "
-                    + "(unexpected number of identifiers).");
+            throw SqlParseException.create(
+                    ctx.ID().get(0).getSymbol(),
+                    "failed to parse identifier expression (unexpected number of identifiers).");
         }
+
+        // Do some validation so that we can print a nicer error to the user.
+        Collection<ColumnSchema> css = tupleSchema.getColumnSchemas(columnName);
+        if (css.isEmpty()) {
+            throw SqlParseException.create(
+                    columnNameToken,
+                    "column '%s' does not exist.",
+                    columnName);
+        }
+        if (css.size() > 1) {
+            throw SqlParseException.create(
+                    columnNameToken,
+                    "column '%s' is ambiguous.",
+                    columnName);
+        }
+        
         return ImmutableVariableExpression.forIdentifier(tupleSchema, columnName);
     }
 
@@ -170,7 +195,7 @@ public class ExpressionParser extends SQLBaseVisitor<Expression> {
 
     @Override
     public Expression visitExpressionAggregate(ExpressionAggregateContext ctx) {
-        checkAggregationsAllowed();
+        checkAggregationsAllowed(ctx.fn);
         
         ExpressionParser inputExpressionParser = new ExpressionParser(
                 partitionTupleSchema.get());
@@ -190,22 +215,22 @@ public class ExpressionParser extends SQLBaseVisitor<Expression> {
         case SQLParser.COUNT:
             return new CountAggregator();
         default:
-            throw new IllegalStateException(String.format(
-                    "Failed to parse aggregation function '%s'.",
-                    aggregationFunToken.getText()));
+            throw SqlParseException.create(
+                    aggregationFunToken,
+                    "Unsupported aggregation function.");
         }
     }
 
     @Override
     public Expression visitExpressionCountStar(ExpressionCountStarContext ctx) {
-        checkAggregationsAllowed();
+        checkAggregationsAllowed(ctx.COUNT().getSymbol());
         
         return constructExpression("count", new CountAggregator());
     }
 
     @Override
     public Expression visitExpressionCountDistinct(ExpressionCountDistinctContext ctx) {
-        checkAggregationsAllowed();
+        checkAggregationsAllowed(ctx.COUNT().getSymbol());
         
         ExpressionParser inputExpressionParser = new ExpressionParser(
                 partitionTupleSchema.get());
@@ -215,10 +240,12 @@ public class ExpressionParser extends SQLBaseVisitor<Expression> {
         return constructExpression("count", new CountDistinctAggregator(inputExpression));
     }
 
-    private void checkAggregationsAllowed() {
-        Preconditions.checkState(
-                partitionTupleSchema.isPresent(),
-                "Cannot specify aggregation function in this context.");
+    private void checkAggregationsAllowed(Token token) {
+        if (!partitionTupleSchema.isPresent()) {
+            throw SqlParseException.create(
+                    token,
+                    "Cannot specify aggregation function in this context.");
+        }
     }
 
     private Expression constructExpression(String name, Aggregator<?, ?> aggregator) {

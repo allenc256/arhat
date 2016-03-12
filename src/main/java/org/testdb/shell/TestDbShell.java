@@ -3,8 +3,8 @@ package org.testdb.shell;
 import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.testdb.database.InMemoryDatabase;
-import org.testdb.parse.AntlrParseException;
-import org.testdb.parse.AntlrParseExceptionErrorListener;
+import org.testdb.parse.SqlParseException;
+import org.testdb.parse.SqlParseExceptionErrorListener;
 import org.testdb.parse.SQLLexer;
 import org.testdb.parse.SQLParser;
 import org.testdb.parse.SQLParser.StatementContext;
@@ -42,7 +42,7 @@ public class TestDbShell {
             StatementContext statement = parser.topLevelStatement().statement();
             StatementEvaluator evaluator = new StatementEvaluator();
             evaluator.evaluate(database, statement);
-        } catch (AntlrParseException e) {
+        } catch (SqlParseException e) {
             System.err.println(e.getMessage());
             System.err.flush();
         } catch (Exception e) {
@@ -59,7 +59,7 @@ public class TestDbShell {
         SQLParser parser = new SQLParser(tokens);
         
         parser.removeErrorListeners();
-        parser.addErrorListener(new AntlrParseExceptionErrorListener());
+        parser.addErrorListener(new SqlParseExceptionErrorListener());
         
         return parser;
     }

@@ -5,7 +5,7 @@ grammar SQL;
 // ============
 
 topLevelStatement
-  : statement ';' EOF
+  : statement ';'? EOF
   ;
 
 statement

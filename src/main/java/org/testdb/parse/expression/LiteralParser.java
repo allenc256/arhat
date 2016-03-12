@@ -6,10 +6,9 @@ import org.testdb.parse.SQLParser.LiteralIntegerContext;
 import org.testdb.parse.SQLParser.LiteralNullContext;
 import org.testdb.parse.SQLParser.LiteralStringContext;
 import org.testdb.parse.SQLParser.LiteralTrueContext;
+import org.testdb.parse.SqlParseException;
 import org.testdb.parse.SqlStrings;
 import org.testdb.type.SqlType;
-
-import com.google.common.base.Preconditions;
 
 public class LiteralParser extends SQLBaseVisitor<Void> {
     private Object value;
@@ -40,9 +39,11 @@ public class LiteralParser extends SQLBaseVisitor<Void> {
     @Override
     public Void visitLiteralString(LiteralStringContext ctx) {
         String s = ctx.getText();
-        Preconditions.checkState(
-                s.startsWith("'") && s.endsWith("'"),
-                "Cannot parse string literal token.");
+        if (!(s.startsWith("'") && s.endsWith("'"))) {
+            throw SqlParseException.create(
+                    ctx.getStart(),
+                    "cannot parse string literal.");
+        }
         value = SqlStrings.unescape(s.substring(1, s.length() - 1));
         type = SqlType.STRING;
         return null;

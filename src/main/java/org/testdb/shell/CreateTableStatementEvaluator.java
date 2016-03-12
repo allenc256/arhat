@@ -6,6 +6,7 @@ import org.testdb.database.InMemoryDatabase;
 import org.testdb.parse.SQLBaseVisitor;
 import org.testdb.parse.SQLParser.ColumnDefinitionContext;
 import org.testdb.parse.SQLParser.CreateTableStatementContext;
+import org.testdb.parse.SqlParseException;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
 import org.testdb.relation.ImmutableTupleSchema;
@@ -14,7 +15,6 @@ import org.testdb.relation.SortedMultisetRelation;
 import org.testdb.relation.TupleSchema;
 import org.testdb.type.SqlType;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.TreeMultiset;
@@ -24,10 +24,12 @@ public class CreateTableStatementEvaluator {
         String tableName = ctx.ID().getText().toLowerCase();
         List<ColumnSchema> tableColumns = getColumnSchemas(tableName, ctx);
         
-        Preconditions.checkState(
-                !database.getTables().containsKey(tableName),
-                "Table %s already exists.",
-                tableName);
+        if (database.getTables().containsKey(tableName)) {
+            throw SqlParseException.create(
+                    ctx.ID().getSymbol(),
+                    "relation '%s' already exists.",
+                    tableName);
+        }
         
         TupleSchema tupleSchema = ImmutableTupleSchema.builder()
                 .columnSchemas(tableColumns)

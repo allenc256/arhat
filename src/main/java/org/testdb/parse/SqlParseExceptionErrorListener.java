@@ -3,8 +3,9 @@ package org.testdb.parse;
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.Token;
 
-public class AntlrParseExceptionErrorListener extends BaseErrorListener {
+public class SqlParseExceptionErrorListener extends BaseErrorListener {
     @Override
     public void syntaxError(Recognizer<?, ?> recognizer,
                             Object offendingSymbol,
@@ -12,11 +13,6 @@ public class AntlrParseExceptionErrorListener extends BaseErrorListener {
                             int charPositionInLine,
                             String msg,
                             RecognitionException e) {
-        throw AntlrParseException.create(
-                recognizer,
-                offendingSymbol,
-                line,
-                charPositionInLine,
-                msg);
+        throw SqlParseException.create((Token) offendingSymbol, msg);
     }
 }

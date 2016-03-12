@@ -9,6 +9,7 @@ import org.testdb.expression.BinaryOperators;
 import org.testdb.expression.Expression;
 import org.testdb.expression.ImmutableBinaryExpression;
 import org.testdb.parse.SQLParser;
+import org.testdb.parse.SqlParseException;
 import org.testdb.type.SqlType;
 
 import com.google.common.collect.ImmutableMap;
@@ -60,6 +61,18 @@ class BinaryOperatorExpressionParser {
         SqlType inputType = !left.getType().equals(SqlType.NULL) ? left.getType() : right.getType();
         SqlType resultType = parseResultType(inputType, opToken);
         BinaryOperator<?, ?> operator = parseOperator(inputType, opToken);
+        
+        if (!left.getType().equals(SqlType.NULL)
+                && !right.getType().equals(SqlType.NULL)
+                && !left.getType().equals(right)) {
+            throw SqlParseException.create(
+                    opToken,
+                    "cannot apply '%s' operator to expressions with types %s and %s.",
+                    opToken.getText(),
+                    left.getType(),
+                    right.getType());
+        }
+        
         return ImmutableBinaryExpression.builder()
                 .leftExpression(left)
                 .rightExpression(right)
@@ -86,8 +99,10 @@ class BinaryOperatorExpressionParser {
         case SQLParser.CONCAT_SYMBOL:
             return SqlType.STRING;
         default:
-            throw new UnsupportedOperationException(String.format(
-                    "Unrecognized operator '%s'.", opToken.getText()));
+            throw SqlParseException.create(
+                    opToken,
+                    "unrecognized operator '%s'.",
+                    opToken.getText());
         }
     }
     
@@ -100,10 +115,11 @@ class BinaryOperatorExpressionParser {
         BinaryOperator<?, ?> op = OPERATOR_TABLE.get(
                 Maps.immutableEntry(inputType, opToken.getType()));
         if (op == null) {
-            throw new UnsupportedOperationException(String.format(
-                    "Do not know how to parse operator '%s' against input type %s.",
+            throw SqlParseException.create(
+                    opToken,
+                    "do not know how to parse operator '%s' against input type %s.",
                     opToken.getText(),
-                    inputType));
+                    inputType);
         }
         return op;
     }
