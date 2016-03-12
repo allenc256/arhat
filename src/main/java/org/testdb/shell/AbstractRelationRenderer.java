@@ -6,9 +6,11 @@ import java.util.List;
 import org.immutables.value.Value;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.Cursor;
+import org.testdb.relation.QualifiedName;
 import org.testdb.relation.Relation;
 import org.testdb.relation.Tuple;
 
+import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
@@ -91,7 +93,7 @@ public abstract class AbstractRelationRenderer {
                 getPrintWriter().print(" | ");
             }
             getPrintWriter().print(formatValuePadded(
-                    css.get(i).getQualifiedName().getName(),
+                    formatColumnName(css.get(i).getQualifiedName()),
                     getHeaderJustification(),
                     formats.get(i).width));
         }
@@ -143,7 +145,7 @@ public abstract class AbstractRelationRenderer {
             if (Number.class.isAssignableFrom(cs.getType().getJavaType())) {
                 justification = getNumericJustification();
             }
-            formats.add(new ColumnFormat(cs.getQualifiedName().getName().length(), justification));
+            formats.add(new ColumnFormat(formatColumnName(cs.getQualifiedName()).length(), justification));
         }
         
         for (Tuple t : tuples) {
@@ -154,6 +156,10 @@ public abstract class AbstractRelationRenderer {
         }
         
         return formats;
+    }
+    
+    private String formatColumnName(Optional<QualifiedName> cn) {
+        return cn.isPresent() ? cn.get().getName() : "?column?";
     }
     
     private String formatValue(Object value) {

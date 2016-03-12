@@ -20,8 +20,11 @@ public interface TupleSchema {
         return getColumnSchemas()
                 .stream()
                 .filter(cs -> {
-                    Optional<String> csQualifier = cs.getQualifiedName().getQualifier();
-                    String csName = cs.getQualifiedName().getName();
+                    if (!cs.getQualifiedName().isPresent()) {
+                        return false;
+                    }
+                    Optional<String> csQualifier = cs.getQualifiedName().get().getQualifier();
+                    String csName = cs.getQualifiedName().get().getName();
                     return (!qualifier.isPresent() || qualifier.equals(csQualifier)) && name.equals(csName);
                 })
                 .collect(Collectors.toList());

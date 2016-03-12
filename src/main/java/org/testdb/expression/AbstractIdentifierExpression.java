@@ -14,7 +14,7 @@ import com.google.common.collect.Iterables;
 
 @Value.Immutable
 public abstract class AbstractIdentifierExpression implements Expression {
-    public abstract TupleSchema getTupleSchema();
+    abstract TupleSchema getTupleSchema();
     
     public abstract QualifiedName getColumnName();
     

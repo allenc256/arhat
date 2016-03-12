@@ -5,7 +5,7 @@ import java.util.List;
 import org.testdb.database.InMemoryDatabase;
 import org.testdb.expression.AbstractIdentifierExpression;
 import org.testdb.expression.Expression;
-import org.testdb.expression.ImmutableIdentifierExpression;
+import org.testdb.expression.ImmutableExtractIndexExpression;
 import org.testdb.parse.SQLBaseVisitor;
 import org.testdb.parse.SQLParser;
 import org.testdb.parse.SQLParser.SelectStatementColumnContext;
@@ -103,7 +103,7 @@ public class SelectStatementParser {
     
     private static class ColumnsVisitor extends SQLBaseVisitor<Void> {
         private final List<Expression> expressions = Lists.newArrayList();
-        private final List<QualifiedName> columnNames = Lists.newArrayList();
+        private final List<Optional<QualifiedName>> columnNames = Lists.newArrayList();
         private final TupleSchema sourceTupleSchema;
 
         private ColumnsVisitor(TupleSchema sourceTupleSchema) {
@@ -112,10 +112,11 @@ public class SelectStatementParser {
 
         @Override
         public Void visitSelectStatementColumnStar(SelectStatementColumnStarContext ctx) {
-            for (ColumnSchema cs : sourceTupleSchema.getColumnSchemas()) {
-                expressions.add(ImmutableIdentifierExpression.builder()
-                        .tupleSchema(sourceTupleSchema)
-                        .columnName(cs.getQualifiedName())
+            for (int i = 0; i < sourceTupleSchema.size(); ++i) {
+                ColumnSchema cs = sourceTupleSchema.getColumnSchema(i);
+                expressions.add(ImmutableExtractIndexExpression.builder()
+                        .tupleIndex(i)
+                        .type(sourceTupleSchema.getColumnSchema(i).getType())
                         .build());
                 columnNames.add(cs.getQualifiedName());
             }
@@ -131,11 +132,11 @@ public class SelectStatementParser {
             expressions.add(expression);
             
             if (ctx.ID() != null) {
-                columnNames.add(ImmutableQualifiedName.of(ctx.ID().getText()));
+                columnNames.add(Optional.of(ImmutableQualifiedName.of(ctx.ID().getText())));
             } else if (expression instanceof AbstractIdentifierExpression) {
-                columnNames.add(((AbstractIdentifierExpression)expression).getColumnName());
+                columnNames.add(Optional.of(((AbstractIdentifierExpression)expression).getColumnName()));
             } else {
-                columnNames.add(ImmutableQualifiedName.of("?column?"));
+                columnNames.add(Optional.absent());
             }
             
             return null;

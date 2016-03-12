@@ -22,19 +22,25 @@ public abstract class AbstractNamedRelation implements Relation {
                 .getTupleSchema()
                 .getColumnSchemas()
                 .stream()
-                .map(cs -> {
-                    QualifiedName newName = ImmutableQualifiedName.builder()
-                            .from(cs.getQualifiedName())
-                            .qualifier(getName())
-                            .build();
-                    return ImmutableColumnSchema.builder()
-                            .from(cs)
-                            .qualifiedName(newName)
-                            .build();
-                })
+                .map(this::renameQualifier)
                 .collect(Collectors.toList()));
         
         return builder.build();
+    }
+
+    private ColumnSchema renameQualifier(ColumnSchema cs) {
+        if (!cs.getQualifiedName().isPresent()) {
+            return cs;
+        }
+        
+        QualifiedName newName = ImmutableQualifiedName.builder()
+                .from(cs.getQualifiedName().get())
+                .qualifier(getName())
+                .build();
+        return ImmutableColumnSchema.builder()
+                .from(cs)
+                .qualifiedName(newName)
+                .build();
     }
 
     @Override
