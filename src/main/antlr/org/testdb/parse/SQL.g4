@@ -5,7 +5,7 @@ grammar SQL;
 // ============
 
 topLevelStatement
-  : statement ';'
+  : statement ';' EOF
   ;
 
 statement
@@ -65,9 +65,13 @@ selectStatementColumn
   ;
 
 selectStatementFromClause
-  : FROM selectStatementFromTableOrSubquery (ID)?
+  : FROM selectStatementFromTableOrSubqueryWithAlias (',' selectStatementFromTableOrSubqueryWithAlias)*
   ;
   
+selectStatementFromTableOrSubqueryWithAlias
+  : selectStatementFromTableOrSubquery ID?
+  ;
+
 selectStatementFromTableOrSubquery
   : ID                                  # selectStatementFromTable
   | '(' selectStatement ')'             # selectStatementFromSubquery

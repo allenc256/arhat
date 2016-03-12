@@ -38,17 +38,19 @@ public class BinaryOperators {
         return left == null || right == null ? null : left + right;
     };
 
+    // N.B., we use Math#multiplyExact(), Math#addExact(), Math#subtractExact()
+    // to protect against arithmetic overflow below.
     public static final BinaryOperator<Integer, Integer> MULTIPLY_INTEGERS = (left, right) -> {
-        return left == null || right == null ? null : left * right;
+        return left == null || right == null ? null : Math.multiplyExact(left, right);
     };
     public static final BinaryOperator<Integer, Integer> DIVIDE_INTEGERS = (left, right) -> {
         return left == null || right == null ? null : left / right;
     };
     public static final BinaryOperator<Integer, Integer> ADD_INTEGERS = (left, right) -> {
-        return left == null || right == null ? null : left + right;
+        return left == null || right == null ? null : Math.addExact(left, right);
     };
     public static final BinaryOperator<Integer, Integer> SUBTRACT_INTEGERS = (left, right) -> {
-        return left == null || right == null ? null : left - right;
+        return left == null || right == null ? null : Math.subtractExact(left, right);
     };
     
     public static final BinaryOperator<Boolean, Boolean> AND = (left, right) -> {

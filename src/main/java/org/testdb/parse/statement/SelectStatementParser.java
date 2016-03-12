@@ -12,17 +12,19 @@ import org.testdb.parse.SQLParser.SelectStatementColumnContext;
 import org.testdb.parse.SQLParser.SelectStatementColumnExpressionContext;
 import org.testdb.parse.SQLParser.SelectStatementColumnStarContext;
 import org.testdb.parse.SQLParser.SelectStatementContext;
-import org.testdb.parse.SQLParser.SelectStatementFromClauseContext;
 import org.testdb.parse.SQLParser.SelectStatementFromSubqueryContext;
 import org.testdb.parse.SQLParser.SelectStatementFromTableContext;
+import org.testdb.parse.SQLParser.SelectStatementFromTableOrSubqueryWithAliasContext;
 import org.testdb.parse.expression.ExpressionParser;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
 import org.testdb.relation.ImmutableFilteredRelation;
 import org.testdb.relation.ImmutableNamedRelation;
+import org.testdb.relation.ImmutableNestedLoopJoinRelation;
 import org.testdb.relation.ImmutableProjectedRelation;
 import org.testdb.relation.ImmutableQualifiedName;
 import org.testdb.relation.ImmutableTupleSchema;
+import org.testdb.relation.JoinPredicates;
 import org.testdb.relation.QualifiedName;
 import org.testdb.relation.Relation;
 import org.testdb.relation.Tuple;
@@ -35,10 +37,23 @@ import com.google.common.collect.Lists;
 
 public class SelectStatementParser {
     public Relation parse(InMemoryDatabase database, SelectStatementContext ctx) {
-        Relation relation = ctx.selectStatementFromClause().accept(new FromClauseVisitor(database));
+        Relation relation = ctx.selectStatementFromClause()
+                .selectStatementFromTableOrSubqueryWithAlias()
+                .stream()
+                .map(s -> s.accept(new FromClauseVisitor(database)))
+                .reduce((r1, r2) -> joinRelations(r1, r2))
+                .get();
         relation = applyFilterIfNecessary(ctx, relation);
         relation = applyProjectionIfNecessary(ctx, relation);
         return relation;
+    }
+    
+    private Relation joinRelations(Relation r1, Relation r2) {
+        return ImmutableNestedLoopJoinRelation.builder()
+                .fromRelation(r1)
+                .toRelation(r2)
+                .joinPredicate(JoinPredicates.alwaysTrue())
+                .build();
     }
     
     private Predicate<Tuple> toPredicate(Expression expression) {
@@ -157,7 +172,7 @@ public class SelectStatementParser {
         }
         
         @Override
-        public Relation visitSelectStatementFromClause(SelectStatementFromClauseContext ctx) {
+        public Relation visitSelectStatementFromTableOrSubqueryWithAlias(SelectStatementFromTableOrSubqueryWithAliasContext ctx) {
             Relation relation = ctx.selectStatementFromTableOrSubquery().accept(this);
             Preconditions.checkState(relation != null, "Failed to parse from clause.");
             

@@ -28,7 +28,7 @@ dependencies {
 
   testCompile "junit:junit:4+"
 
-  processor "org.immutables:value:2.1.0"
+  processor "org.immutables:value:2.1.4"
 
   antlr "org.antlr:antlr4:4.5"
 }

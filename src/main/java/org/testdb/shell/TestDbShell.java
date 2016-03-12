@@ -19,6 +19,10 @@ public class TestDbShell {
         evaluateStatement(database, "create table foobar (foo integer, bar string, baz boolean);");
         evaluateStatement(database, "insert into foobar (foo, bar, baz) values (1, 'hello', true);");
         evaluateStatement(database, "insert into foobar (foo, bar, baz) values (2, 'world', false);");
+        evaluateStatement(database, "create table quux (foo integer, value string);");
+        evaluateStatement(database, "insert into quux (foo, value) values (1, 'lorem');");
+        evaluateStatement(database, "insert into quux (foo, value) values (2, 'ipsum');");
+        evaluateStatement(database, "insert into quux (foo, value) values (3, 'dolor');");
         
         reader.setPrompt("testdb# ");
         

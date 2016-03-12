@@ -15,7 +15,8 @@ import com.google.common.collect.SortedMultiset;
 @Value.Immutable
 @Value.Style(typeImmutable = "*")
 public abstract class AbstractSortedMultisetRelation implements IndexedRelation {
-    public abstract SortedMultiset<Tuple> getTuplesSortedMultiset();
+    @Value.Auxiliary
+    abstract SortedMultiset<Tuple> getTuplesSortedMultiset();
 
     @Override
     public Cursor<Tuple> getTuples() {
