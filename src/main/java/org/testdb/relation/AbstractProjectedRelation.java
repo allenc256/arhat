@@ -30,16 +30,11 @@ public abstract class AbstractProjectedRelation implements Relation {
 
             @Override
             public Tuple next() {
-                Tuple tuple = delegate().next();
-                ImmutableTuple.Builder result = ImmutableTuple.builder()
-                        .schema(getTupleSchema());
-
-                for (int targetIdx = 0; targetIdx < getSchemaMapping().size(); ++targetIdx) {
-                    int sourceIdx = getSchemaMapping().get(targetIdx);
-                    result.addValues(tuple.get(sourceIdx));
-                }
-
-                return result.build();
+                return ImmutableProjectedTuple.builder()
+                        .schema(getTupleSchema())
+                        .schemaMapping(getSchemaMapping())
+                        .sourceTuple(delegate().next())
+                        .build();
             }
         };
     }

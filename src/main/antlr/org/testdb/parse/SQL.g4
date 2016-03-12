@@ -6,7 +6,13 @@ grammar SQL;
 
 statement
   : selectStatement
+  | insertStatement
+  | dropTableStatement
   | createTableStatement
+  ;
+  
+dropTableStatement
+  : DROP TABLE ID
   ;
   
 createTableStatement
@@ -14,37 +20,42 @@ createTableStatement
   ;
   
 columnDefinitionList
-  : columnDefinition (',' columnDefinition)*
+  : (columnDefinition (',' columnDefinition)*)?
   ;
   
 columnDefinition
-  : ID columnDefinitionType
+  : ID type=(INTEGER|STRING)
   ;
   
-columnDefinitionType
-  : INTEGER
-  | STRING
+insertStatement
+  : INSERT INTO ID '(' insertStatementColumns ')' VALUES '(' insertStatementValue (',' insertStatementValue)* ')'
+  ;
+  
+insertStatementColumns
+  : ID (',' ID)*
+  ;
+  
+insertStatementValue
+  : NULL
+  | INTEGER_LITERAL
+  | STRING_LITERAL
   ;
   
 selectStatement
-  : SELECT columnList fromClause
+  : SELECT selectStatementColumns selectStatementFromClause
+  ;
+  
+selectStatementColumns
+  : selectStatementColumn (',' selectStatementColumn)*
+  ;
+  
+selectStatementColumn
+  : STAR
+  | ID
   ;
 
-columnList
-  : column (',' column)*
-  ;
-
-column
-  : ID        # identifier
-  | '*'       # star
-  ;
-
-fromClause
-  : FROM table
-  ;
-
-table
-  : ID
+selectStatementFromClause
+  : FROM ID
   ;
 
 // ===========
@@ -55,11 +66,23 @@ NEWLINE: '\r'? '\n' -> skip;
 WS: ( ' ' | '\t' | '\n' | '\r' )+ -> skip;
 
 CREATE: C R E A T E;
+DROP: D R O P;
+INSERT: I N S E R T;
+VALUES: V A L U E S;
+INTO: I N T O;
 TABLE: T A B L E;
 INTEGER: I N T E G E R;
 STRING: S T R I N G;
 SELECT: S E L E C T;
 FROM: F R O M;
+
+NULL: N U L L;
+TRUE: T R U E;
+FALSE: F A L S E;
+INTEGER_LITERAL: '0' .. '9'+;
+STRING_LITERAL: '\'' (~('\'' | '\r' | '\n') | '\'' '\'' | ('\r'? '\n'))* '\'';
+
+STAR: '*';
 
 ID: ('a' .. 'z' | 'A' .. 'Z' | '_') ('a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9')*;
 

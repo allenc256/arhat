@@ -5,7 +5,12 @@ import org.immutables.value.Value;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.SortedMultiset;
 
-@Value.Modifiable
+/**
+ * N.B., this class technically isn't immutable, but we still use the immutables
+ * annotation processor to generate it.
+ */
+@Value.Immutable
+@Value.Style(typeImmutable = "*")
 public abstract class AbstractSortedMultisetRelation implements IndexedRelation {
     public abstract SortedMultiset<Tuple> getTuplesSortedMultiset();
 
@@ -34,5 +39,12 @@ public abstract class AbstractSortedMultisetRelation implements IndexedRelation 
         Preconditions.checkState(
                 LexicographicTupleOrdering.INSTANCE.equals(getTuplesSortedMultiset().comparator()),
                 "Only the lexicographic tuple ordering is currently supported.");
+        
+        for (String columnName : getTupleSchema().getColumnSchemasByName().keySet()) {
+            Preconditions.checkState(
+                    getTupleSchema().getColumnSchemasByName().get(columnName).size() == 1,
+                    "Column name '%s' must be unique.",
+                    columnName);
+        }
     }
 }

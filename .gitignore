@@ -1,9 +1,10 @@
-.gradle/
-.settings/
+/.gradle/
+/.settings/
 .classpath
 .project
 .factorypath
 
-build/
-generated_src/
+/build/
+/generated_src/
+/generated_src_antlr/
 /bin/

@@ -4,12 +4,12 @@ import org.immutables.value.Value;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.ListMultimap;
+import com.google.common.collect.Multimap;
 
 @Value.Immutable
 public abstract class AbstractTupleSchema implements TupleSchema {
     @Value.Derived
-    public ListMultimap<String, ColumnSchema> getColumnSchemasByName() {
+    public Multimap<String, ColumnSchema> getColumnSchemasByName() {
         ImmutableListMultimap.Builder<String, ColumnSchema> b = ImmutableListMultimap.builder();
         for (ColumnSchema cs : getColumnSchemas()) {
             b.put(cs.getName(), cs);

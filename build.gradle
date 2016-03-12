@@ -1,27 +1,21 @@
-buildscript {
-  repositories {
-    maven {
-      url "https://plugins.gradle.org/m2/"
-    }
-  }
-  dependencies {
-    classpath "gradle.plugin.org.inferred:gradle-processors:1.1.2"
-  }
+plugins {
+  id 'org.inferred.processors' version '1.1'
 }
 
 apply plugin: "java"
 apply plugin: "eclipse"
 apply plugin: "antlr"
-apply plugin: "org.inferred.processors"
+apply plugin: "application"
+
+mainClassName = "org.testdb.shell.TestDbShell"
 
 sourceSets {
   main {
     java {
-      srcDir "generated_src"
+      srcDir "generated_src_antlr"
     }
   }
 }
-
 
 repositories {
   mavenCentral()
@@ -29,13 +23,67 @@ repositories {
 
 dependencies {
   compile "com.google.guava:guava:19.0"
-  processor "org.immutables:value:2.1.0"
-  antlr "org.antlr:antlr4:4.5"
+  compile "jline:jline:2.11"
+
   testCompile "junit:junit:4+"
+
+  processor "org.immutables:value:2.1.0"
+
+  antlr "org.antlr:antlr4:4.5"
 }
 
 generateGrammarSource {
   maxHeapSize = "64m"
-  arguments += ["-visitor", "-long-messages", "-lib", "src/main/antlr/org/testdb", "-package", "org.testdb"]
-  outputDirectory = new File("generated_src")
+  arguments += ["-visitor", "-long-messages", "-lib", "src/main/antlr/org/testdb", "-package", "org.testdb.parse"]
+  outputDirectory = new File("generated_src_antlr")
+}
+
+eclipseClasspath {
+  dependsOn rootProject.tasks.getByName("generateGrammarSource")
+}
+
+task(run, dependsOn: 'classes', overwrite: true) << {
+  // Check various gradle flags to make sure console will work.
+  //
+  // (reference: https://github.com/tkruse/gradle-groovysh-plugin (TaskHelper.groovy))
+
+  if (System.console() == null) {
+    String msg = 'Error: No system console available. This happens when using jvmargs or the gradle dameon.  (use --no-daemon ?).'
+    println(msg)
+    throw new IllegalStateException(msg)
+  }
+
+  if (project.gradle.startParameter.logLevel != LogLevel.QUIET) {
+    String msg = 'Do not run with logging output. (use -q)'
+    println(msg)
+    throw new IllegalStateException(msg)
+  }
+
+  if (project.gradle.startParameter.parallelThreadCount != 0) {
+    String msg = 'Do not run with parallel thread. (use --parallel-threads 0)'
+    println(msg)
+    throw new IllegalStateException(msg)
+  }
+
+  // Code below is based off http://stackoverflow.com/questions/22567831
+
+  def classpath = sourceSets.main.runtimeClasspath
+
+  def command = [
+    'java',
+    '-cp', classpath.collect().join(System.getProperty('path.separator')),
+    'org.testdb.shell.TestDbShell'
+  ]
+
+  def proc = new ProcessBuilder(command)
+    .redirectOutput(ProcessBuilder.Redirect.INHERIT)
+    .redirectInput(ProcessBuilder.Redirect.INHERIT)
+    .redirectError(ProcessBuilder.Redirect.INHERIT)
+    .start()
+
+  proc.waitFor()
+
+  if (0 != proc.exitValue()) {
+      throw new RuntimeException("console exited with status: ${proc.exitValue()}")
+  }
 }
