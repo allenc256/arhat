@@ -3,16 +3,21 @@ package org.testdb.shell;
 import java.util.List;
 
 import org.testdb.database.InMemoryDatabase;
+import org.testdb.expression.Expression;
+import org.testdb.expression.ExpressionVisitor;
 import org.testdb.parse.SQLParser;
 import org.testdb.parse.SQLParser.SelectStatementColumnContext;
 import org.testdb.parse.SQLParser.SelectStatementContext;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableColumnSchema;
+import org.testdb.relation.ImmutableFilteredRelation;
 import org.testdb.relation.ImmutableProjectedRelation;
 import org.testdb.relation.ImmutableTupleSchema;
 import org.testdb.relation.Relation;
+import org.testdb.relation.Tuple;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
@@ -26,14 +31,42 @@ public class SelectStatementEvaluator {
                 "Relation '%s' does not exist.",
                 tableName);
         
+        relation = applyFilterIfNecessary(ctx, relation);
+        relation = applyProjectionIfNecessary(ctx, relation);
+        
         RelationRenderer.builder()
-                .relation(applyProjection(ctx, relation))
+                .relation(relation)
                 .build()
                 .render();
     }
+    
+    private Predicate<Tuple> toPredicate(Expression<? extends Object> expression) {
+        return t -> {
+            Object result = expression.evaluate(t);
+            Preconditions.checkState(
+                    result instanceof Boolean,
+                    "Predicate expression must be boolean-typed.");
+            return (Boolean)result;
+        };
+    }
+    
+    private Relation applyFilterIfNecessary(SelectStatementContext ctx,
+                                            Relation relation) {
+        if (ctx.selectStatementWhereClause() == null) {
+            return relation;
+        }
+        
+        Expression<? extends Object> expression = ctx.selectStatementWhereClause()
+                .expression()
+                .accept(new ExpressionVisitor(relation.getTupleSchema()));
+        return ImmutableFilteredRelation.builder()
+                .sourceRelation(relation)
+                .filterPredicate(toPredicate(expression))
+                .build();
+    }
 
-    private Relation applyProjection(SelectStatementContext ctx,
-                                     Relation relation) {
+    private Relation applyProjectionIfNecessary(SelectStatementContext ctx,
+                                                Relation relation) {
         List<SelectStatementColumnContext> columns = ctx.selectStatementColumns().selectStatementColumn();
         
         if (columns.size() == 1

@@ -28,21 +28,27 @@ columnDefinition
   ;
   
 insertStatement
-  : INSERT INTO ID '(' insertStatementColumns ')' VALUES '(' insertStatementValue (',' insertStatementValue)* ')' ';'
+  : INSERT INTO ID '(' insertStatementColumns ')' VALUES '(' insertStatementValues ')' ';'
   ;
   
 insertStatementColumns
   : ID (',' ID)*
   ;
   
-insertStatementValue
-  : NULL
-  | INTEGER_LITERAL
-  | STRING_LITERAL
+insertStatementValues
+  : literal (',' literal)*
+  ;
+
+literal
+  : NULL_LITERAL                        # literalNull
+  | INTEGER_LITERAL                     # literalInteger
+  | STRING_LITERAL                      # literalString
+  | TRUE_LITERAL                        # literalTrue
+  | FALSE_LITERAL                       # literalFalse
   ;
   
 selectStatement
-  : SELECT selectStatementColumns selectStatementFromClause ';'
+  : SELECT selectStatementColumns selectStatementFromClause selectStatementWhereClause? ';'
   ;
   
 selectStatementColumns
@@ -57,6 +63,24 @@ selectStatementFromClause
   : FROM ID
   ;
 
+selectStatementWhereClause
+  : WHERE expression
+  ;
+  
+expression
+  : ID                                  # expressionId
+  | literal                             # expressionLiteral
+  | expression '=' expression           # expressionEq
+  | expression '<' expression           # expressionLt
+  | expression '>' expression           # expressionGt
+  | expression '<=' expression          # expressionLte
+  | expression '>=' expression          # expressionGte
+  | expression AND expression           # expressionAnd
+  | expression OR expression            # expressionOr
+  | NOT expression                      # expressionNot
+  | '(' expression ')'                  # expressionParens
+  ;
+
 // ===========
 // Lexer rules
 // ===========
@@ -64,20 +88,24 @@ selectStatementFromClause
 NEWLINE: '\r'? '\n' -> skip;
 WS: ( ' ' | '\t' | '\n' | '\r' )+ -> skip;
 
+AND: A N D;
 CREATE: C R E A T E;
 DROP: D R O P;
+FROM: F R O M;
 INSERT: I N S E R T;
-VALUES: V A L U E S;
+INTEGER: I N T E G E R;
 INTO: I N T O;
 TABLE: T A B L E;
-INTEGER: I N T E G E R;
-STRING: S T R I N G;
 SELECT: S E L E C T;
-FROM: F R O M;
+STRING: S T R I N G;
+NOT: N O T;
+OR: O R;
+WHERE: W H E R E;
+VALUES: V A L U E S;
 
-NULL: N U L L;
-TRUE: T R U E;
-FALSE: F A L S E;
+NULL_LITERAL: N U L L;
+TRUE_LITERAL: T R U E;
+FALSE_LITERAL: F A L S E;
 INTEGER_LITERAL: '0' .. '9'+;
 STRING_LITERAL: '\'' (~('\'' | '\r' | '\n') | '\'' '\'')* '\'';
 
