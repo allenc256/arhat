@@ -16,9 +16,9 @@ public class TestDbShell {
         ConsoleReader reader = new ConsoleReader();
         InMemoryDatabase database = new InMemoryDatabase();
         
-        evaluateStatement(database, "create table foobar (foo integer, bar string);");
-        evaluateStatement(database, "insert into foobar (foo, bar) values (1, 'hello');");
-        evaluateStatement(database, "insert into foobar (foo, bar) values (2, 'world');");
+        evaluateStatement(database, "create table foobar (foo integer, bar string, baz boolean);");
+        evaluateStatement(database, "insert into foobar (foo, bar, baz) values (1, 'hello', true);");
+        evaluateStatement(database, "insert into foobar (foo, bar, baz) values (2, 'world', false);");
         
         reader.setPrompt("testdb# ");
         
@@ -32,7 +32,7 @@ public class TestDbShell {
     }
 
     private static void evaluateStatement(InMemoryDatabase database,
-                                         String line) {
+                                          String line) {
         try {
             SQLParser parser = parseSql(line);
             StatementContext statement = parser.statement();

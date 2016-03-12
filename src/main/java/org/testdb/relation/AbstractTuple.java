@@ -28,7 +28,7 @@ public abstract class AbstractTuple implements Tuple {
                 continue;
             }
             
-            Class<?> expectedType = getSchema().getColumnSchema(i).getType();
+            Class<?> expectedType = getSchema().getColumnSchema(i).getType().getJavaType();
             Class<? extends Object> actualType = get(i).getClass();
             if (!expectedType.isAssignableFrom(actualType)) {
                 throw new IllegalStateException(

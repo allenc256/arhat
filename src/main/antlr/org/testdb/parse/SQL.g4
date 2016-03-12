@@ -24,7 +24,7 @@ columnDefinitionList
   ;
   
 columnDefinition
-  : ID type=(INTEGER|STRING)
+  : ID type=(INTEGER|STRING|BOOLEAN)
   ;
   
 insertStatement
@@ -56,7 +56,8 @@ selectStatementColumns
   ;
   
 selectStatementColumn
-  : column=(STAR|ID)
+  : STAR_SYMBOL                         # selectStatementColumnStar
+  | expression                          # selectStatementColumnExpression
   ;
 
 selectStatementFromClause
@@ -70,15 +71,13 @@ selectStatementWhereClause
 expression
   : ID                                  # expressionId
   | literal                             # expressionLiteral
-  | expression '=' expression           # expressionEq
-  | expression '<' expression           # expressionLt
-  | expression '>' expression           # expressionGt
-  | expression '<=' expression          # expressionLte
-  | expression '>=' expression          # expressionGte
-  | expression AND expression           # expressionAnd
-  | expression OR expression            # expressionOr
   | NOT expression                      # expressionNot
   | '(' expression ')'                  # expressionParens
+  | expression CONCAT_SYMBOL expression # expressionConcat
+  | expression op=('*'|'/') expression  # expressionMultDiv
+  | expression op=('+'|'-') expression  # expressionPlusMinus
+  | expression op=('<'|'>'|'<='|'>='|'=') expression # expressionCompare
+  | expression op=(AND|OR) expression   # expressionAndOr
   ;
 
 // ===========
@@ -89,6 +88,7 @@ NEWLINE: '\r'? '\n' -> skip;
 WS: ( ' ' | '\t' | '\n' | '\r' )+ -> skip;
 
 AND: A N D;
+BOOLEAN: B O O L E A N;
 CREATE: C R E A T E;
 DROP: D R O P;
 FROM: F R O M;
@@ -109,7 +109,16 @@ FALSE_LITERAL: F A L S E;
 INTEGER_LITERAL: '0' .. '9'+;
 STRING_LITERAL: '\'' (~('\'' | '\r' | '\n') | '\'' '\'')* '\'';
 
-STAR: '*';
+STAR_SYMBOL: '*';
+DIV_SYMBOL: '/';
+PLUS_SYMBOL: '+';
+MINUS_SYMBOL: '-';
+EQ_SYMBOL: '=';
+LT_SYMBOL: '<';
+LTE_SYMBOL: '<=';
+GT_SYMBOL: '>';
+GTE_SYMBOL: '>=';
+CONCAT_SYMBOL: '||';
 
 ID: ('a' .. 'z' | 'A' .. 'Z' | '_') ('a' .. 'z' | 'A' .. 'Z' | '_' | '0' .. '9')*;
 

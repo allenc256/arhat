@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.testdb.database.InMemoryDatabase;
 import org.testdb.parse.SQLBaseVisitor;
-import org.testdb.parse.SQLParser;
 import org.testdb.parse.SQLParser.ColumnDefinitionContext;
 import org.testdb.parse.SQLParser.CreateTableStatementContext;
 import org.testdb.relation.ColumnSchema;
@@ -13,6 +12,7 @@ import org.testdb.relation.ImmutableTupleSchema;
 import org.testdb.relation.LexicographicTupleOrdering;
 import org.testdb.relation.SortedMultisetRelation;
 import org.testdb.relation.TupleSchema;
+import org.testdb.type.SqlType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -51,23 +51,11 @@ public class CreateTableStatementEvaluator {
         
         @Override
         public Void visitColumnDefinition(ColumnDefinitionContext ctx) {
-            ImmutableColumnSchema.Builder builder = ImmutableColumnSchema.builder()
+            columnSchemas.add(ImmutableColumnSchema.builder()
                     .index(columnSchemas.size())
-                    .name(ctx.ID().getText());
-
-            switch (ctx.type.getType()) {
-            case SQLParser.STRING:
-                builder.type(String.class);
-                break;
-            case SQLParser.INTEGER:
-                builder.type(Integer.class);
-                break;
-            default:
-                throw new IllegalStateException("Unrecognized token type.");
-            }
-
-            columnSchemas.add(builder.build());
-            
+                    .name(ctx.ID().getText())
+                    .type(SqlType.valueOf(ctx.type.getText().toUpperCase()))
+                    .build());
             return null;
         }
     }

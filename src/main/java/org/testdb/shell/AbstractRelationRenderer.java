@@ -9,6 +9,8 @@ import org.testdb.relation.Cursor;
 import org.testdb.relation.Relation;
 import org.testdb.relation.Tuple;
 
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 
@@ -23,6 +25,11 @@ public abstract class AbstractRelationRenderer {
     }
     
     @Value.Default
+    public int getMaximumWidth() {
+        return 40;
+    }
+    
+    @Value.Default
     public PrintStream getPrintWriter() {
         return System.out;
     }
@@ -31,11 +38,31 @@ public abstract class AbstractRelationRenderer {
     public String getNullString() {
         return "(null)";
     }
+
+    @Value.Default
+    public Justification getHeaderJustification() {
+        return Justification.CENTER;
+    }
+
+    @Value.Default
+    public Justification getNumericJustification() {
+        return Justification.RIGHT;
+    }
+
+    @Value.Default
+    public Justification getDefaultJustification() {
+        return Justification.LEFT;
+    }
     
+    public enum Justification {
+        LEFT, CENTER, RIGHT
+    }
+
     public void render() {
         List<Tuple> tuples = Lists.newArrayList();
         boolean reachedLimit = true;
-        
+
+        // Extract the tuples up to the limit.
         try (Cursor<Tuple> c = getRelation().getTuples()) {
             for (int i = 0; i < getLimit(); ++i) {
                 if (!c.hasNext()) {
@@ -48,19 +75,48 @@ public abstract class AbstractRelationRenderer {
             throw Throwables.propagate(e);
         }
             
-        List<Integer> widths = computeColumnWidths(tuples);
+        List<ColumnFormat> formats = computeColumnFormats(tuples);
         
-        // Print header row.
-        printValues(widths, Lists.transform(
-                getRelation().getTupleSchema().getColumnSchemas(), 
-                cs -> cs.getName()));
-        printSeparator(widths);
-        
-        // Print tuples.
-        for (int i = 0; i < tuples.size(); ++i) {
-            printValues(widths, Lists.transform(tuples.get(i).getValues(), v -> formatValue(v)));
-        }
+        printHeader(formats);
+        printTuples(tuples, formats);
+        printFooter(tuples, reachedLimit);
+    }
 
+    private void printHeader(List<ColumnFormat> formats) {
+        List<ColumnSchema> css = getRelation().getTupleSchema().getColumnSchemas();
+        for (int i = 0; i < css.size(); ++i) {
+            if (i == 0) {
+                getPrintWriter().print(' ');
+            } else {
+                getPrintWriter().print(" | ");
+            }
+            getPrintWriter().print(formatValuePadded(
+                    css.get(i).getName(),
+                    getHeaderJustification(),
+                    formats.get(i).width));
+        }
+        getPrintWriter().println();
+        printSeparator(formats);
+    }
+    
+    private void printTuples(List<Tuple> tuples, List<ColumnFormat> formats) {
+        for (Tuple tuple : tuples) {
+            for (int i = 0; i < tuple.getSchema().size(); ++i) {
+                if (i == 0) {
+                    getPrintWriter().print(' ');
+                } else {
+                    getPrintWriter().print(" | ");
+                }
+                getPrintWriter().print(formatValuePadded(
+                        tuple.get(i),
+                        formats.get(i).justification,
+                        formats.get(i).width));
+            }
+            getPrintWriter().println();
+        }
+    }
+
+    private void printFooter(List<Tuple> tuples, boolean reachedLimit) {
         getPrintWriter().printf(
                 "(%s%d row%s)\n",
                 reachedLimit ? "first " : "",
@@ -69,52 +125,82 @@ public abstract class AbstractRelationRenderer {
         getPrintWriter().println();
     }
 
-    private void printValues(List<Integer> widths, List<String> values) {
-        for (int i = 0; i < widths.size(); ++i) {
-            String name = values.get(i);
-            if (i > 0) {
-                getPrintWriter().print('|');
-            }
-            getPrintWriter().print(' ');
-            getPrintWriter().print(name);
-            printPadding(widths.get(i) - name.length() + 1, ' ');
-        }
-        getPrintWriter().println();
-    }
-
-    private void printSeparator(List<Integer> widths) {
-        for (int i = 0; i < widths.size(); ++i) {
+    private void printSeparator(List<ColumnFormat> formats) {
+        for (int i = 0; i < formats.size(); ++i) {
             if (i > 0) {
                 getPrintWriter().print('+');
             }
-            printPadding(widths.get(i) + 2, '-');
+            getPrintWriter().print(Strings.repeat("-", formats.get(i).width + 2));
         }
         getPrintWriter().println();
     }
 
-    private List<Integer> computeColumnWidths(List<Tuple> tuples) {
-        List<Integer> widths = Lists.newArrayList();
+    private List<ColumnFormat> computeColumnFormats(List<Tuple> tuples) {
+        List<ColumnFormat> formats = Lists.newArrayList();
         
         for (ColumnSchema cs : getRelation().getTupleSchema().getColumnSchemas()) {
-            widths.add(cs.getName().length());
+            Justification justification = getDefaultJustification();
+            if (Number.class.isAssignableFrom(cs.getType().getJavaType())) {
+                justification = getNumericJustification();
+            }
+            formats.add(new ColumnFormat(cs.getName().length(), justification));
         }
         
         for (Tuple t : tuples) {
             for (int i = 0; i < t.size(); ++i) {
-                widths.set(i, Integer.max(widths.get(i), formatValue(t.get(i)).length()));
+                ColumnFormat format = formats.get(i);
+                format.width = Integer.max(format.width, formatValue(t.get(i)).length());
             }
         }
         
-        return widths;
-    }
-    
-    private void printPadding(int count, char ch) {
-        for (int i = 0; i < count; ++i) {
-            getPrintWriter().print(ch);
-        }
+        return formats;
     }
     
     private String formatValue(Object value) {
-        return value != null ? String.valueOf(value) : getNullString();
+        String s = value != null ? String.valueOf(value) : getNullString();
+        if (s.length() > getMaximumWidth()) {
+            return s.substring(0, getMaximumWidth() - 3) + "...";
+        } else {
+            return s;
+        }
+    }
+    
+    private String formatValuePadded(Object value,
+                                     Justification justification,
+                                     int width) {
+        String s = formatValue(value);
+        int padding = Math.max(width - s.length(), 0);
+        
+        switch (justification) {
+        case CENTER:
+            int leftPadding = padding / 2;
+            int rightPadding = padding - leftPadding;
+            return Strings.repeat(" ", leftPadding) + s + Strings.repeat(" ", rightPadding);
+            
+        case LEFT:
+            return s + Strings.repeat(" ", padding);
+            
+        case RIGHT:
+            return Strings.repeat(" ", padding) + s;
+            
+        default:
+            throw new IllegalStateException("Unrecognized justification: " + justification);
+        }
+    }
+    
+    private static class ColumnFormat {
+        public int width;
+        public Justification justification;
+        
+        private ColumnFormat(int width, Justification justification) {
+            this.width = width;
+            this.justification = justification;
+        }
+    }
+    
+    @Value.Check
+    protected void check() {
+        // N.B., check max width (must support one character plus "..." ellipses)
+        Preconditions.checkState(getMaximumWidth() >= 4, "Maximum width must be at least 4.");
     }
 }

@@ -6,7 +6,7 @@ import org.testdb.relation.Tuple;
 import com.sun.istack.internal.Nullable;
 
 @Value.Immutable
-public abstract class AbstractLiteralExpression implements Expression<Object> {
+public abstract class AbstractLiteralExpression implements Expression {
     @Nullable
     public abstract Object getValue();
 

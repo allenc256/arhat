@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 import org.testdb.database.InMemoryDatabase;
 import org.testdb.expression.LiteralVisitor;
 import org.testdb.parse.SQLParser.InsertStatementContext;
+import org.testdb.parse.SQLParser.LiteralContext;
 import org.testdb.relation.ColumnSchema;
 import org.testdb.relation.ImmutableTuple;
 import org.testdb.relation.SortedMultisetRelation;
@@ -35,7 +36,7 @@ public class InsertStatementEvaluator {
         List<Object> columnValues = ctx.insertStatementValues()
                 .literal()
                 .stream()
-                .map(value -> value.accept(LiteralVisitor.instance()))
+                .map(this::parseLiteralValue)
                 .collect(Collectors.toList());
         
         Preconditions.checkState(
@@ -47,6 +48,15 @@ public class InsertStatementEvaluator {
         
         relation.getTuplesSortedMultiset().add(
                 constructTuple(relation, columnNames, columnValues));
+    }
+
+    private Object parseLiteralValue(LiteralContext value) {
+        LiteralVisitor v = new LiteralVisitor();
+        value.accept(v);
+        Preconditions.checkState(
+                v.getType() != null,
+                "Failed to parse literal value.");
+        return v.getValue();
     }
 
     private Tuple constructTuple(SortedMultisetRelation relation,

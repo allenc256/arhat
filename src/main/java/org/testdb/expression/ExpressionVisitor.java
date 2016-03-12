@@ -1,13 +1,27 @@
 package org.testdb.expression;
 
+import java.util.Map;
+import java.util.Map.Entry;
+
+import org.antlr.v4.runtime.Token;
 import org.testdb.parse.SQLBaseVisitor;
-import org.testdb.parse.SQLParser.ExpressionEqContext;
+import org.testdb.parse.SQLParser;
+import org.testdb.parse.SQLParser.ExpressionAndOrContext;
+import org.testdb.parse.SQLParser.ExpressionCompareContext;
+import org.testdb.parse.SQLParser.ExpressionConcatContext;
 import org.testdb.parse.SQLParser.ExpressionIdContext;
 import org.testdb.parse.SQLParser.ExpressionLiteralContext;
+import org.testdb.parse.SQLParser.ExpressionMultDivContext;
 import org.testdb.parse.SQLParser.ExpressionParensContext;
+import org.testdb.parse.SQLParser.ExpressionPlusMinusContext;
 import org.testdb.relation.TupleSchema;
+import org.testdb.type.SqlType;
 
-public class ExpressionVisitor extends SQLBaseVisitor<Expression<? extends Object>> {
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+
+public class ExpressionVisitor extends SQLBaseVisitor<Expression> {
     private final TupleSchema tupleSchema;
     
     public ExpressionVisitor(TupleSchema tupleSchema) {
@@ -15,14 +29,20 @@ public class ExpressionVisitor extends SQLBaseVisitor<Expression<? extends Objec
     }
 
     @Override
-    public Expression<? extends Object> visitExpressionLiteral(ExpressionLiteralContext ctx) {
+    public Expression visitExpressionLiteral(ExpressionLiteralContext ctx) {
+        LiteralVisitor visitor = new LiteralVisitor();
+        ctx.literal().accept(visitor);
+        Preconditions.checkState(
+                visitor.getType() != null,
+                "Failed to properly parse literal.");
         return ImmutableLiteralExpression.builder()
-                .value(ctx.literal().accept(LiteralVisitor.instance()))
+                .value(visitor.getValue())
+                .type(visitor.getType())
                 .build();
     }
 
     @Override
-    public Expression<? extends Object> visitExpressionId(ExpressionIdContext ctx) {
+    public Expression visitExpressionId(ExpressionIdContext ctx) {
         return ImmutableIdentifierExpression.builder()
                 .tupleSchema(tupleSchema)
                 .columnName(ctx.ID().getText())
@@ -30,15 +50,135 @@ public class ExpressionVisitor extends SQLBaseVisitor<Expression<? extends Objec
     }
 
     @Override
-    public Expression<? extends Object> visitExpressionEq(ExpressionEqContext ctx) {
-        return ImmutableEqualExpression.builder()
-                .leftExpression(ctx.expression(0).accept(this))
-                .rightExpression(ctx.expression(1).accept(this))
-                .build();
+    public Expression visitExpressionConcat(ExpressionConcatContext ctx) {
+        return parseExpressionBinary(
+                ctx.expression(0).accept(this),
+                ctx.expression(1).accept(this),
+                ctx.CONCAT_SYMBOL().getSymbol());
     }
 
     @Override
-    public Expression<? extends Object> visitExpressionParens(ExpressionParensContext ctx) {
+    public Expression visitExpressionCompare(ExpressionCompareContext ctx) {
+        return parseExpressionBinary(
+                ctx.expression(0).accept(this),
+                ctx.expression(1).accept(this),
+                ctx.op);
+    }
+
+    @Override
+    public Expression visitExpressionMultDiv(ExpressionMultDivContext ctx) {
+        return parseExpressionBinary(
+                ctx.expression(0).accept(this),
+                ctx.expression(1).accept(this),
+                ctx.op);
+    }
+
+    @Override
+    public Expression visitExpressionPlusMinus(ExpressionPlusMinusContext ctx) {
+        return parseExpressionBinary(
+                ctx.expression(0).accept(this),
+                ctx.expression(1).accept(this),
+                ctx.op);
+    }
+
+    @Override
+    public Expression visitExpressionAndOr(ExpressionAndOrContext ctx) {
+        return parseExpressionBinary(
+                ctx.expression(0).accept(this),
+                ctx.expression(1).accept(this),
+                ctx.op);
+    }
+    
+    private Expression parseExpressionBinary(Expression left,
+                                             Expression right,
+                                             Token opToken) {
+        SqlType inputType = !left.getType().equals(SqlType.NULL) ? left.getType() : right.getType();
+        SqlType resultType = parseExpressionBinaryResultType(inputType, opToken);
+        BinaryOperator<?, ?> operator = parseExpressionBinaryOperator(inputType, opToken);
+        return ImmutableBinaryExpression.builder()
+                .leftExpression(left)
+                .rightExpression(right)
+                .operator(operator)
+                .type(resultType)
+                .build();
+    }
+    
+    private SqlType parseExpressionBinaryResultType(SqlType inputType,
+                                                    Token opToken) {
+        switch (opToken.getType()) {
+        case SQLParser.EQ_SYMBOL:
+        case SQLParser.LT_SYMBOL:
+        case SQLParser.GT_SYMBOL:
+        case SQLParser.LTE_SYMBOL:
+        case SQLParser.GTE_SYMBOL:
+        case SQLParser.AND:
+        case SQLParser.OR:
+            return SqlType.BOOLEAN;
+        case SQLParser.STAR_SYMBOL:
+        case SQLParser.DIV_SYMBOL:
+        case SQLParser.PLUS_SYMBOL:
+        case SQLParser.MINUS_SYMBOL:
+            return inputType;
+        case SQLParser.CONCAT_SYMBOL:
+            return SqlType.STRING;
+        default:
+            throw new UnsupportedOperationException(String.format(
+                    "Unrecognized operator '%s'.", opToken.getText()));
+        }
+    }
+    
+    private static final Map<Entry<SqlType, Integer>, BinaryOperator<?, ?>> BINARY_OPERATOR_TABLE;
+    
+    static {
+        ImmutableMap.Builder<Entry<SqlType, Integer>, BinaryOperator<?, ?>> b = ImmutableMap.builder();
+        
+        register(b, SqlType.INTEGER, SQLParser.STAR_SYMBOL, BinaryOperators.MULTIPLY_INTEGERS);
+        register(b, SqlType.INTEGER, SQLParser.DIV_SYMBOL, BinaryOperators.DIVIDE_INTEGERS);
+        register(b, SqlType.INTEGER, SQLParser.PLUS_SYMBOL, BinaryOperators.ADD_INTEGERS);
+        register(b, SqlType.INTEGER, SQLParser.MINUS_SYMBOL, BinaryOperators.SUBTRACT_INTEGERS);
+        
+        register(b, SqlType.INTEGER, SQLParser.LT_SYMBOL, BinaryOperators.LT_INTEGERS);
+        register(b, SqlType.INTEGER, SQLParser.GT_SYMBOL, BinaryOperators.GT_INTEGERS);
+        register(b, SqlType.INTEGER, SQLParser.LTE_SYMBOL, BinaryOperators.LTE_INTEGERS);
+        register(b, SqlType.INTEGER, SQLParser.GTE_SYMBOL, BinaryOperators.GTE_INTEGERS);
+        
+        register(b, SqlType.STRING, SQLParser.CONCAT_SYMBOL, BinaryOperators.CONCAT_STRINGS);
+        
+        register(b, SqlType.STRING, SQLParser.LT_SYMBOL, BinaryOperators.LT_STRINGS);
+        register(b, SqlType.STRING, SQLParser.GT_SYMBOL, BinaryOperators.GT_STRINGS);
+        register(b, SqlType.STRING, SQLParser.LTE_SYMBOL, BinaryOperators.LTE_STRINGS);
+        register(b, SqlType.STRING, SQLParser.GTE_SYMBOL, BinaryOperators.GTE_STRINGS);
+        
+        register(b, SqlType.BOOLEAN, SQLParser.AND, BinaryOperators.AND);
+        register(b, SqlType.BOOLEAN, SQLParser.OR, BinaryOperators.OR);
+        
+        BINARY_OPERATOR_TABLE = b.build();
+    }
+    
+    private static void register(ImmutableMap.Builder<Entry<SqlType, Integer>, BinaryOperator<?, ?>> b,
+                                 SqlType sqlType,
+                                 int opToken,
+                                 BinaryOperator<?, ?> op) {
+        b.put(Maps.immutableEntry(sqlType, opToken), op);
+    }
+    
+    private BinaryOperator<?, ?> parseExpressionBinaryOperator(SqlType inputType, Token opToken) {
+        // N.B., the equals operator is always the same regardless of input type.
+        if (opToken.getType() == SQLParser.EQ_SYMBOL) {
+            return BinaryOperators.EQUALS;
+        }
+        
+        BinaryOperator<?, ?> op = BINARY_OPERATOR_TABLE.get(
+                Maps.immutableEntry(inputType, opToken.getType()));
+        if (op == null) {
+            throw new UnsupportedOperationException(String.format(
+                    "Unrecognized operator '%s'.", opToken.getText()));
+        }
+        return op;
+    }
+
+    @Override
+    public Expression visitExpressionParens(ExpressionParensContext ctx) {
         return ctx.expression().accept(this);
     }
 }

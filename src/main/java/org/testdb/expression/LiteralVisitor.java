@@ -1,52 +1,64 @@
 package org.testdb.expression;
 
 import org.testdb.parse.SQLBaseVisitor;
-import org.testdb.parse.SqlStrings;
 import org.testdb.parse.SQLParser.LiteralFalseContext;
 import org.testdb.parse.SQLParser.LiteralIntegerContext;
 import org.testdb.parse.SQLParser.LiteralNullContext;
 import org.testdb.parse.SQLParser.LiteralStringContext;
 import org.testdb.parse.SQLParser.LiteralTrueContext;
+import org.testdb.parse.SqlStrings;
+import org.testdb.type.SqlType;
 
 import com.google.common.base.Preconditions;
 
-public class LiteralVisitor extends SQLBaseVisitor<Object> {
-    private LiteralVisitor() {
-        // empty
+public class LiteralVisitor extends SQLBaseVisitor<Void> {
+    private Object value;
+    private SqlType type;
+    
+    public Object getValue() {
+        return value;
     }
-    
-    private static LiteralVisitor INSTANCE = new LiteralVisitor();
-    
-    public static LiteralVisitor instance() {
-        return INSTANCE;
+
+    public SqlType getType() {
+        return type;
     }
-    
+
     @Override
-    public Object visitLiteralNull(LiteralNullContext ctx) {
+    public Void visitLiteralNull(LiteralNullContext ctx) {
+        value = null;
+        type = SqlType.NULL;
         return null;
     }
 
     @Override
-    public Integer visitLiteralInteger(LiteralIntegerContext ctx) {
-        return Integer.parseInt(ctx.getText());
+    public Void visitLiteralInteger(LiteralIntegerContext ctx) {
+        value = Integer.parseInt(ctx.getText());
+        type = SqlType.INTEGER;
+        return null;
     }
 
     @Override
-    public String visitLiteralString(LiteralStringContext ctx) {
+    public Void visitLiteralString(LiteralStringContext ctx) {
         String s = ctx.getText();
         Preconditions.checkState(
                 s.startsWith("'") && s.endsWith("'"),
                 "Cannot parse string literal token.");
-        return SqlStrings.unescape(s.substring(1, s.length() - 1));
+        value = SqlStrings.unescape(s.substring(1, s.length() - 1));
+        type = SqlType.STRING;
+        return null;
     }
 
     @Override
-    public Boolean visitLiteralTrue(LiteralTrueContext ctx) {
-        return true;
+    public Void visitLiteralTrue(LiteralTrueContext ctx) {
+        value = true;
+        type = SqlType.BOOLEAN;
+        return null;
     }
 
     @Override
-    public Boolean visitLiteralFalse(LiteralFalseContext ctx) {
-        return false;
+    public Void visitLiteralFalse(LiteralFalseContext ctx) {
+        value = false;
+        type = SqlType.BOOLEAN;
+        return null;
     }
 }

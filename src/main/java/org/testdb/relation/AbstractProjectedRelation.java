@@ -3,19 +3,15 @@ package org.testdb.relation;
 import java.util.List;
 
 import org.immutables.value.Value;
+import org.testdb.expression.Expression;
+import org.testdb.type.SqlType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 
 @Value.Immutable
 public abstract class AbstractProjectedRelation implements Relation {
-    /**
-     * Describes how the source schema should map to the target schema.
-     * <p>
-     * The ith index of this list describes what column from the source schema
-     * should map to the ith column of the target schema. Specifically, it
-     * should contain a column index from the source schema.
-     */
-    public abstract List<Integer> getSchemaMapping();
+    public abstract List<Expression> getExpressions();
     
     public abstract Relation getSourceRelation();
 
@@ -30,10 +26,17 @@ public abstract class AbstractProjectedRelation implements Relation {
 
             @Override
             public Tuple next() {
-                return ImmutableProjectedTuple.builder()
+                Tuple source = delegate().next();
+                List<Object> values = Lists.newArrayListWithCapacity(
+                        getTupleSchema().size());
+                
+                for (Expression expression : getExpressions()) {
+                    values.add(expression.evaluate(source));
+                }
+                
+                return ImmutableTuple.builder()
                         .schema(getTupleSchema())
-                        .schemaMapping(getSchemaMapping())
-                        .sourceTuple(delegate().next())
+                        .values(values)
                         .build();
             }
         };
@@ -41,27 +44,20 @@ public abstract class AbstractProjectedRelation implements Relation {
 
     @Value.Check
     protected void check() {
-        TupleSchema sourceSchema = getSourceRelation().getTupleSchema();
         TupleSchema targetSchema = getTupleSchema();
         
         Preconditions.checkState(
-                getSchemaMapping().size() == targetSchema.size(),
+                getExpressions().size() == targetSchema.size(),
                 "Size of mapping must match size of target schema.");
         
-        for (int targetIdx = 0; targetIdx < getSchemaMapping().size(); ++targetIdx) {
-            Integer sourceIdx = getSchemaMapping().get(targetIdx);
+        for (int i = 0; i < getExpressions().size(); ++i) {
+            SqlType schemaType = getTupleSchema().getColumnSchema(i).getType();
+            SqlType expressionType = getExpressions().get(i).getType();
             Preconditions.checkState(
-                    sourceIdx != null && sourceIdx >= 0 && sourceIdx < sourceSchema.size(),
-                    "Invalid source index %d.",
-                    sourceIdx);
-            
-            ColumnSchema source = sourceSchema.getColumnSchema(sourceIdx);
-            ColumnSchema target = targetSchema.getColumnSchema(targetIdx);
-            Preconditions.checkState(
-                    source.getType().equals(target.getType()),
-                    "Columns have mismatched types (source %s, target %s).",
-                    source,
-                    target);
+                    schemaType.equals(expressionType),
+                    "Schema type must match expression type (schema type %s, expression type %s).",
+                    schemaType,
+                    expressionType);
         }
     }
 }
