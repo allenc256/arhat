@@ -5,9 +5,9 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.testdb.database.InMemoryDatabase;
-import org.testdb.expression.AbstractVariableExpression;
 import org.testdb.expression.Expression;
 import org.testdb.expression.ImmutableVariableExpression;
+import org.testdb.expression.NamedExpression;
 import org.testdb.expression.aggregator.Aggregator;
 import org.testdb.parse.SQLBaseVisitor;
 import org.testdb.parse.SQLParser;
@@ -147,8 +147,8 @@ public class SelectStatementParser {
             Optional<String> columnName = Optional.absent();
             Expression expression = expressions.get(i);
             
-            if (expression instanceof AbstractVariableExpression) {
-                columnName = ((AbstractVariableExpression)expression).getName();
+            if (expression instanceof NamedExpression) {
+                columnName = ((NamedExpression)expression).getName();
             }
             
             b.addColumnSchemas(ImmutableColumnSchema.builder()
@@ -208,7 +208,7 @@ public class SelectStatementParser {
         @Override
         public Void visitSelectStatementColumnStar(SelectStatementColumnStarContext ctx) {
             Optional<String> qualifier = ctx.ID() != null ?
-                    Optional.of(ctx.ID().getText()) :
+                    Optional.of(ctx.ID().getText().toLowerCase()) :
                     Optional.absent();
                     
             if (qualifier.isPresent()) {
@@ -251,9 +251,9 @@ public class SelectStatementParser {
             expressions.add(expression);
             
             if (ctx.ID() != null) {
-                columnNames.add(Optional.of(ctx.ID().getText()));
-            } else if (expression instanceof AbstractVariableExpression) {
-                columnNames.add(((AbstractVariableExpression)expression).getName());
+                columnNames.add(Optional.of(ctx.ID().getText().toLowerCase()));
+            } else if (expression instanceof NamedExpression) {
+                columnNames.add(((NamedExpression)expression).getName());
             } else {
                 columnNames.add(Optional.absent());
             }
@@ -289,7 +289,7 @@ public class SelectStatementParser {
         
         @Override
         public Relation visitSelectStatementFromTable(SelectStatementFromTableContext ctx) {
-            String tableName = ctx.ID(0).getText();
+            String tableName = ctx.ID(0).getText().toLowerCase();
             Relation relation = database.getTables().get(tableName);
             
             Preconditions.checkState(
@@ -305,7 +305,7 @@ public class SelectStatementParser {
                 // *either* the full table name or the alias in this case.
                 relation = ImmutableNamedRelation.builder()
                         .sourceRelation(relation)
-                        .aliases(ImmutableSet.of(tableName, ctx.ID(1).getText()))
+                        .aliases(ImmutableSet.of(tableName, ctx.ID(1).getText().toLowerCase()))
                         .build();
             }
             
@@ -320,7 +320,7 @@ public class SelectStatementParser {
             if (ctx.ID() != null) {
                 relation = ImmutableNamedRelation.builder()
                         .sourceRelation(relation)
-                        .aliases(ImmutableSet.of(ctx.ID().getText()))
+                        .aliases(ImmutableSet.of(ctx.ID().getText().toLowerCase()))
                         .build();
             } else {
                 // N.B., it's important that we wrap the sub-query in a

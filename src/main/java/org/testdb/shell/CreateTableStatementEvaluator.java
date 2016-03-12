@@ -21,7 +21,7 @@ import com.google.common.collect.TreeMultiset;
 
 public class CreateTableStatementEvaluator {
     public void evaluate(InMemoryDatabase database, CreateTableStatementContext ctx) {
-        String tableName = ctx.ID().getText();
+        String tableName = ctx.ID().getText().toLowerCase();
         List<ColumnSchema> tableColumns = getColumnSchemas(tableName, ctx);
         
         Preconditions.checkState(
@@ -62,7 +62,7 @@ public class CreateTableStatementEvaluator {
             columnSchemas.add(ImmutableColumnSchema.builder()
                     .index(columnSchemas.size())
                     .qualifierAliases(ImmutableSet.of(tableName))
-                    .name(ctx.ID().getText())
+                    .name(ctx.ID().getText().toLowerCase())
                     .type(SqlType.valueOf(ctx.type.getText().toUpperCase()))
                     .build());
             return null;

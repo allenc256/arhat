@@ -177,7 +177,9 @@ public class ExpressionParser extends SQLBaseVisitor<Expression> {
         Expression inputExpression = ctx.expression().accept(
                 inputExpressionParser);
 
-        return constructExpression(parseAggregator(ctx.fn, inputExpression));
+        return constructExpression(
+                ctx.fn.getText(),
+                parseAggregator(ctx.fn, inputExpression));
     }
 
     private Aggregator<?, ?> parseAggregator(Token aggregationFunToken,
@@ -198,7 +200,7 @@ public class ExpressionParser extends SQLBaseVisitor<Expression> {
     public Expression visitExpressionCountStar(ExpressionCountStarContext ctx) {
         checkAggregationsAllowed();
         
-        return constructExpression(new CountAggregator());
+        return constructExpression("count", new CountAggregator());
     }
 
     @Override
@@ -210,7 +212,7 @@ public class ExpressionParser extends SQLBaseVisitor<Expression> {
         Expression inputExpression = ctx.expression().accept(
                 inputExpressionParser);
         
-        return constructExpression(new CountDistinctAggregator(inputExpression));
+        return constructExpression("count", new CountDistinctAggregator(inputExpression));
     }
 
     private void checkAggregationsAllowed() {
@@ -219,13 +221,14 @@ public class ExpressionParser extends SQLBaseVisitor<Expression> {
                 "Cannot specify aggregation function in this context.");
     }
 
-    private Expression constructExpression(Aggregator<?, ?> aggregator) {
+    private Expression constructExpression(String name, Aggregator<?, ?> aggregator) {
         int varIndex = aggregators.size();
         
         aggregators.add(aggregator);
         
         return ImmutableAggregationVariableExpression.builder()
                 .variableIndex(varIndex)
+                .name(name)
                 .type(aggregator.getType())
                 .build();
     }

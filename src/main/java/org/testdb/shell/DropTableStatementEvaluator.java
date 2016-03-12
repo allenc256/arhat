@@ -7,7 +7,7 @@ import com.google.common.base.Preconditions;
 
 public class DropTableStatementEvaluator {
     public void evaluate(InMemoryDatabase database, DropTableStatementContext ctx) {
-        String tableName = ctx.ID().getText();
+        String tableName = ctx.ID().getText().toLowerCase();
         
         Preconditions.checkState(
                 database.getTables().containsKey(tableName),

@@ -20,7 +20,7 @@ import com.google.common.collect.Lists;
 
 public class InsertStatementEvaluator {
     public void evaluate(InMemoryDatabase database, InsertStatementContext ctx) {
-        String tableName = ctx.ID().getText();
+        String tableName = ctx.ID().getText().toLowerCase();
         SortedMultisetRelation relation = database.getTables().get(tableName);
         
         if (relation == null) {
@@ -31,7 +31,7 @@ public class InsertStatementEvaluator {
         List<String> columnNames = ctx.insertStatementColumns()
                 .ID()
                 .stream()
-                .map(id -> id.getText())
+                .map(id -> id.getText().toLowerCase())
                 .collect(Collectors.toList());
         
         List<Object> columnValues = ctx.insertStatementValues()
