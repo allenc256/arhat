@@ -1,5 +1,27 @@
-apply plugin: 'java'
-apply plugin: 'eclipse'
+buildscript {
+  repositories {
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+  }
+  dependencies {
+    classpath "gradle.plugin.org.inferred:gradle-processors:1.1.2"
+  }
+}
+
+apply plugin: "java"
+apply plugin: "eclipse"
+apply plugin: "antlr"
+apply plugin: "org.inferred.processors"
+
+sourceSets {
+  main {
+    java {
+      srcDir "generated_src"
+    }
+  }
+}
+
 
 repositories {
   mavenCentral()
@@ -7,7 +29,13 @@ repositories {
 
 dependencies {
   compile "com.google.guava:guava:19.0"
+  processor "org.immutables:value:2.1.0"
+  antlr "org.antlr:antlr4:4.5"
   testCompile "junit:junit:4+"
 }
 
-
+generateGrammarSource {
+  maxHeapSize = "64m"
+  arguments += ["-visitor", "-long-messages", "-lib", "src/main/antlr/org/testdb", "-package", "org.testdb"]
+  outputDirectory = new File("generated_src")
+}

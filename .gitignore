@@ -2,5 +2,8 @@
 .settings/
 .classpath
 .project
+.factorypath
 
 build/
+generated_src/
+/bin/
